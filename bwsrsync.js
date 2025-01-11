@@ -1,5 +1,5 @@
 // dropboxSyncManager.js
-import config from './config.js';
+// import config from './config.js';
 
 class DropboxSyncManager {
     constructor() {

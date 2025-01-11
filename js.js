@@ -1,4 +1,4 @@
-import browserSyncManager from "./bwsrsync";
+// import browserSyncManager from "./bwsrsync";
 
 // Suggestions Manager Class
 class SearchSuggestionsManager {
