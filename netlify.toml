@@ -2,9 +2,7 @@
   functions = "functions"
   command = """
     npm run create-env && \
-    sed -i.bak "s/__DROPBOX_CLIENT_ID__/$DROPBOX_CLIENT_ID/g" public/window-env.js && \
-    sed -i.bak "s/__DROPBOX_CLIENT_SECRET__/$DROPBOX_CLIENT_SECRET/g" public/window-env.js && \
-    rm -f public/window-env.js.bak && \
+    envsubst < public/window-env.js.template > dist/window-env.js && \
     npm run build:prod
   """
   publish = "dist"
