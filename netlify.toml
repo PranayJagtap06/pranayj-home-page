@@ -1,2 +1,21 @@
 [build]
   functions = "functions"
+  command = """
+    npm run create-env && \
+    sed -i.bak "s/__DROPBOX_CLIENT_ID__/$DROPBOX_CLIENT_ID/g" public/window-env.js && \
+    sed -i.bak "s/__DROPBOX_CLIENT_SECRET__/$DROPBOX_CLIENT_SECRET/g" public/window-env.js && \
+    rm -f public/window-env.js.bak && \
+    npm run build:dev
+  """
+  publish = "dist"
+
+[context.production]
+  environment = { NODE_VERSION = "23.3.0" }
+
+[[plugins]]
+  package = "@netlify/functions"
+
+[[plugins]]
+  package = "netlify-plugin-inline-source"
+    [plugins.inputs]
+      attribute = "inline"

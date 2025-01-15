@@ -1,4 +1,4 @@
-// import browserSyncManager from "./bwsrsync";
+import browserSyncManager from "./bwsrsync.js";
 
 // Suggestions Manager Class
 class SearchSuggestionsManager {
@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Initialize BrowserSyncManager
     browserSync = new browserSyncManager();
     try {
-        await browserSync.authenticate();
+        await browserSync.authenticateDBX();
     } catch (error) {
         console.warn('Failed to initialize sync:', error);
         // Continue without sync functionality

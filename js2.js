@@ -1,3 +1,4 @@
+// js2.js
 // Suggestions Manager Class
 class SearchSuggestionsManager {
     constructor() {

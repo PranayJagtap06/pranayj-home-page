@@ -1,16 +1,22 @@
 // dropboxSyncManager.js
-import { initializeClient, authenticate } from './debug-env.js';
+import config from './config.js';
+// var Dropbox = require('dropbox').Dropbox;
 
-class browserSyncManager {
+class DropboxSyncManager {
     constructor() {
-        this.client = null;
+        this.Dropbox = window.Dropbox || (typeof Dropbox !== 'undefined' ? Dropbox : null);
+        if (!this.Dropbox) {
+            console.warn('Dropbox library not loaded');
+        }
+        this.DROPBOX_API_CONFIG = window.config?.DROPBOX_API_CONFIG || {};
         this.isAuthenticated = false;
         this.searchHistory = [];
         this.favorites = [];
         this.localCache = new Map();
         this.offlineQueue = [];
         this.lastSync = null;
-
+        this.client = null;
+        
         // File paths in Dropbox app folder
         this.filePaths = {
             history: '/search_history.json',
@@ -19,17 +25,42 @@ class browserSyncManager {
     }
 
     // Initialize Dropbox client
-    async initializeDBXClient() {
-        this.client = await initializeClient();
+    async initializeClient() {
+        this.client = new Dropbox(this.DROPBOX_API_CONFIG);
+
     }
 
     // Authentication method
-    async authenticateDBX() {
-        this.isAuthenticated = await authenticate();
-        if (this.isAuthenticated) {
+    async authenticate() {
+        try {
+            if (!this.client) {
+                await this.initializeClient();
+            }
+
+            // Generate authentication URL
+            const authUrl = this.client.getAuthenticationUrl(
+                window.location.origin + '/auth-callback'
+            );
+
+            // Open auth window and handle callback
+            const token = await new Promise((resolve) => {
+                const authWindow = window.open(authUrl, '_blank');
+                window.addEventListener('message', (event) => {
+                    if (event.data.type === 'DROPBOX_TOKEN') {
+                        resolve(event.data.token);
+                        authWindow.close();
+                    }
+                });
+            });
+
+            this.client.setAccessToken(token);
+            this.isAuthenticated = true;
             await this.syncData();
+            return true;
+        } catch (error) {
+            console.error('Dropbox authentication failed:', error);
+            return false;
         }
-        return this.isAuthenticated;
     }
 
     // File operations
@@ -120,4 +151,4 @@ class browserSyncManager {
     // The merge methods can remain the same as in the Google Drive version
 }
 
-export default browserSyncManager;
+export default DropboxSyncManager;

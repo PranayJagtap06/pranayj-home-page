@@ -1,6 +1,8 @@
 .env
 .env.local
 .env.*.local
+window-env.js
+public/window-env.js
 node_modules/
 dist/
 # Local Netlify folder
