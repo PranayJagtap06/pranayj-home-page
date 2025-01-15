@@ -2,7 +2,7 @@
   functions = "functions"
   command = """
     npm run create-env && \
-    envsubst < public/window-env.js.template > dist/window-env.js && \
+    envsubst < window-env.js.template > public/window-env.js && \
     npm run build:prod
   """
   publish = "dist"
