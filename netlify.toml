@@ -5,7 +5,7 @@
     sed -i.bak "s/__DROPBOX_CLIENT_ID__/$DROPBOX_CLIENT_ID/g" public/window-env.js && \
     sed -i.bak "s/__DROPBOX_CLIENT_SECRET__/$DROPBOX_CLIENT_SECRET/g" public/window-env.js && \
     rm -f public/window-env.js.bak && \
-    npm run build:dev
+    npm run build:prod
   """
   publish = "dist"
 

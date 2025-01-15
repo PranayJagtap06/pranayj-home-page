@@ -2,7 +2,7 @@
 	"scripts": {
 		"create-env": "mkdir -p public && cp window-env.js.template public/window-env.js",
 		"build:prod": "npm run create-env && webpack --mode production",
-		"build:dev": "npm run create-env && echo 'Checking env vars:' && echo ${DROPBOX_CLIENT_ID:0:4}... && webpack --mode development",
+		"build:dev": "npm run create-env && webpack --mode development",
 		"start": "netlify dev",
 		"serve": "http-server dist"
 	},
