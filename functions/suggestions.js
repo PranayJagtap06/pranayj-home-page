@@ -10,18 +10,47 @@ exports.handler = async function (event) {
     };
 
     try {
-        const response = await fetch(endpoints[engine]);
+        console.log(`Fetching suggestions for query: ${query}, engine: ${engine}`);
+        const response = await fetch(endpoints[engine], {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+
+        if (!response.ok) {
+            console.error(`Failed to fetch suggestions. Status: ${response.status}, Engine: ${engine}`);
+            return {
+                statusCode: response.status,
+                body: JSON.stringify({
+                    error: `Failed to fetch suggestions. Status: ${response.status}`,
+                    engine
+                })
+            };
+        }
+
         const data = await response.json();
+        console.log('Raw response data:', JSON.stringify(data));
 
         // Parse response based on search engine
         let suggestions;
         switch (engine) {
             case 'duckduckgo':
-                suggestions = data.map(item => ({
-                    text: item.phrase,
-                    type: 'suggestion',
-                    icon: '🔍'
-                }));
+                suggestions = data.map(item => {
+                    if (typeof item == 'string') {
+                        return {
+                            text: item,
+                            type: 'suggestion',
+                            icon: '🔍'
+                        };
+                    } else {
+                        // console.log('Foreach:', item);
+                        return item.map(text => ({
+                            text: text,
+                            type: 'suggestion',
+                            icon: '🔍'
+                        }));
+                    }
+                }).flat();
                 break;
 
             case 'google':
@@ -33,8 +62,8 @@ exports.handler = async function (event) {
                 break;
 
             case 'bing':
-                suggestions = data.AS.Results[0].Suggests.map(item => ({
-                    text: item.Txt,
+                suggestions = ((data?.AS?.Results?.[0]?.Suggests) || []).map(item => ({
+                    text: item?.Txt || item,
                     type: 'suggestion',
                     icon: '🔍'
                 }));
@@ -43,6 +72,13 @@ exports.handler = async function (event) {
             default:
                 suggestions = [];
         }
+
+        // Filter out empty suggestions
+        // suggestions = suggestions.filter(suggestion => 
+        //     suggestion.text && suggestion.text.trim() !== ''
+        // );
+
+        console.log('Processed suggestions:', JSON.stringify(suggestions));
 
         return {
             statusCode: 200,
@@ -59,7 +95,8 @@ exports.handler = async function (event) {
             statusCode: 500,
             body: JSON.stringify({
                 error: "Failed fetching suggestions",
-                details: error.message
+                details: error.message,
+                engine
             })
         };
     }

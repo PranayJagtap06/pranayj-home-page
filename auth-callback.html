@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -17,5 +17,23 @@
             window.close();
         }
     </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Authentication Callback</title>
+    <script>
+        window.onload = function() {
+            const code = new URLSearchParams(window.location.search).get('code');
+            const error = new URLSearchParams(window.location.search).get('error');
+            window.opener.postMessage({ code, error }, window.location.origin);
+            window.close();
+        };
+    </script>
+</head>
+<body>
+    <p>Completing authentication...</p>
 </body>
 </html>

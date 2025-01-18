@@ -1,16 +1,9 @@
 [build]
   functions = "functions"
   command = """
-    npm run create-env && \
-    envsubst < window-env.js.template > public/window-env.js && \
     npm run build:prod
   """
   publish = "dist"
 
 [context.production]
   environment = { NODE_VERSION = "23.3.0" }
-
-[[plugins]]
-  package = "netlify-plugin-inline-source"
-    [plugins.inputs]
-      attribute = "inline"

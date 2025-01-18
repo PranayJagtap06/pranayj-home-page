@@ -1,155 +1,120 @@
-// const dotenv = require('dotenv');
-// const result = dotenv.config();
-// const { Dropbox } = require('dropbox');
-// const http = require('http');
-// const url = require('url');
-// const crypto = require('crypto'); // Import crypto module for PKCE
+// debug-env-lastlatest.js
+import { Dropbox } from 'dropbox';
+import { parse } from 'url';
+import { randomBytes, createHash } from 'crypto';
+import config from './config.js';
 
-// console.log('Dotenv Load Result:', result);
-// console.log('Process Env:', {
-//     DROPBOX_CLIENT_ID: process.env.DROPBOX_CLIENT_ID,
-//     DROPBOX_CLIENT_SECRET: process.env.DROPBOX_CLIENT_SECRET,
-// });
-
-// let client;
-
-// async function initializeClient() {
-//     client = new Dropbox({ clientId: process.env.DROPBOX_CLIENT_ID });
-// }
-
-// // Function to generate a random string
-// function generateRandomString(length) {
-//     return crypto.randomBytes(length).toString('hex').slice(0,length);
-// }
-
-// // Function to generate code challenge
-// function generateCodeChallenge(codeVerifier) {
-//     const sha256 = crypto.createHash('sha256').update(codeVerifier).digest('base64');
-//     return sha256.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-// }
-
-// // Authentication method
-// async function authenticate() {
-//     try {
-//         if (!client) {
-//             await initializeClient();
-//         }
-//         // Generate code verifier and challenge for PKCE
-//         const codeVerifier = generateRandomString(128);
-//         const codeChallenge = generateCodeChallenge(codeVerifier);
-//         const scopes = ["account_info.read", "files.metadata.read", "files.content.write", "files.content.read"];
-
-//         // console.log('bjs-scope is array: ', Array.isArray(scopes));
-//         // console.log('bjs-scope: ', scopes);
-
-//         // Generate authentication URL with PKCE
-//         const authUrl = client.auth.getAuthenticationUrl(
-//             'http://localhost:8080/', // redirectUri
-//             null, // state
-//             'code', // authType
-//             'offline', // tokenAccessType
-//             scopes, // scope
-//             'none', // includeGrantedScopes
-//             { code_challenge: codeChallenge, code_challenge_method: 'S256' } // options
-//         );
-
-//         console.log('Please visit this URL to authenticate:', authUrl);
-
-//         // Start a server to handle the callback
-//         return new Promise((resolve, reject) => {
-//             const server = http.createServer(async (req, res) => {
-//                 const parsedUrl = url.parse(req.url, true);
-
-//                 if (parsedUrl.pathname === '/') {
-//                     const code = parsedUrl.query.code;
-
-//                     if (code) {
-//                         try {
-//                             const tokenResponse = await client.auth.getAccessTokenFromCode(
-//                                 'http://localhost:8080/',
-//                                 code,
-//                                 null,
-//                                 { code_verifier: codeVerifier }
-//                             );
-//                             const {access_token} = tokenResponse;
-
-//                             client = new Dropbox({ accessToken: access_token });
-
-//                             console.log('Successfully authenticated with Dropbox');
-//                             res.end('Authentication successful! You can close this window.');
-//                             server.close();
-//                             resolve(true);
-//                         } catch(err){
-//                              console.error('Failed to retrieve access token from Dropbox', err);
-//                              res.end('Authentication failed. Please try again.');
-//                              server.close();
-//                              resolve(false);
-//                         }
-//                     } else {
-//                         console.error('Failed to retrieve code from URL');
-//                         res.end('Authentication failed. Please try again.');
-//                         server.close();
-//                         resolve(false);
-//                     }
-//                 }
-//             });
-
-//             server.listen(8080, () => {
-//                 console.log('Waiting for authentication callback on http://localhost:8080/');
-//             });
-//         });
-//     } catch (error) {
-//         console.error('Dropbox authentication failed:', error);
-//         return false;
-//     }
-// }
-
-// authenticate();
-// module.exports = {
-//     authenticate,
-//     initializeClient
-// };
-
-
-const dotenv = require('dotenv');
-const result = dotenv.config();
-const { Dropbox } = require('dropbox');
-const http = require('http');
-const url = require('url');
-const crypto = require('crypto');
-
-console.log('Dotenv Load Result:', result);
-console.log('Process Env:', {
-    DROPBOX_CLIENT_ID: process.env.DROPBOX_CLIENT_ID,
-    DROPBOX_CLIENT_SECRET: process.env.DROPBOX_CLIENT_SECRET,
+console.log('DropBox ID,Secret:', {
+    DROPBOX_CLIENT_ID: config.DROPBOX_API_CONFIG.clientId,
+    DROPBOX_CLIENT_SECRET: config.DROPBOX_API_CONFIG.clientSecret,
 });
 
 let client;
+const AUTH_STATE_KEY = 'dropbox_auth_state';
+const TOKEN_EXPIRY_KEY = 'dropbox_token_expiry';
+const TOKEN_EXPIRY_DAYS = 30; // Token valid for 7 days
 
-async function initializeClient() {
-    client = new Dropbox({ 
-        clientId: process.env.DROPBOX_CLIENT_ID,
-        clientSecret: process.env.DROPBOX_CLIENT_SECRET 
+export const initializeClient = async () => {
+    // if (client) return client;
+
+    const storedAuth = localStorage.getItem(AUTH_STATE_KEY);
+    const tokenExpiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+
+    if (storedAuth && tokenExpiry) {
+        const expiryDate = new Date(parseInt(tokenExpiry));
+        if (expiryDate > new Date()) {
+            try {
+                const { access_token, refresh_token } = JSON.parse(storedAuth);
+                client = new Dropbox({
+                    accessToken: access_token,
+                    refreshToken: refresh_token,
+                    clientId: config.DROPBOX_API_CONFIG.clientId,
+                    clientSecret: config.DROPBOX_API_CONFIG.clientSecret
+                });
+                return client;
+            } catch (error) {
+                console.warn('Failed to restore client from stored auth:', error);
+                clearStoredAuth();
+            }
+        } else {
+            clearStoredAuth();
+        }
+    }
+
+    client = new Dropbox({
+        clientId: config.DROPBOX_API_CONFIG.clientId,
+        clientSecret: config.DROPBOX_API_CONFIG.clientSecret
     });
+    return client;
+};
+
+export const clearStoredAuth = () => {
+    localStorage.removeItem(AUTH_STATE_KEY);
+    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    client = null;
 }
 
 function generateRandomString(length) {
-    return crypto.randomBytes(length).toString('hex').slice(0,length);
+    return randomBytes(length).toString('hex').slice(0, length);
 }
 
 function generateCodeChallenge(codeVerifier) {
-    const sha256 = crypto.createHash('sha256').update(codeVerifier).digest('base64');
+    const sha256 = createHash('sha256').update(codeVerifier).digest('base64');
     return sha256.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function authenticate() {
+function storeAuthState(access_token, refresh_token) {
+    const authState = JSON.stringify({ access_token, refresh_token });
+    localStorage.setItem(AUTH_STATE_KEY, authState);
+    
+    // Set token expiry
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + TOKEN_EXPIRY_DAYS);
+    localStorage.setItem(TOKEN_EXPIRY_KEY, expiryDate.getTime().toString());
+}
+
+export const refreshAccessToken = async () => {
+    try {
+        const storedAuth = localStorage.getItem(AUTH_STATE_KEY);
+        if (!storedAuth) throw new Error('No refresh token available');
+
+        const { refresh_token } = JSON.parse(storedAuth);
+        const response = await client.auth.refreshAccessToken(refresh_token);
+        const { access_token: new_access_token, refresh_token: new_refresh_token } = response.result;
+
+        storeAuthState(new_access_token, new_refresh_token);
+        return true;
+    } catch (error) {
+        console.error('Failed to refresh token:', error);
+        clearStoredAuth();
+        return false;
+    }
+}
+
+export const authenticate = async () => {
     try {
         if (!client) {
             await initializeClient();
         }
-        const codeVerifier = generateRandomString(128);
-        const codeChallenge = generateCodeChallenge(codeVerifier);
-        
+
+        // Check if there's valid stored authentication
+        const storedAuth = localStorage.getItem(AUTH_STATE_KEY);
+        const tokenExpiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+
+        if (storedAuth && tokenExpiry) {
+            const expiryDate = new Date(parseInt(tokenExpiry));
+            
+            if (expiryDate > new Date()) {
+                console.log('Using stored authentication');
+                return true;
+            } else {
+                // Try to refresh the token
+                const refreshed = await refreshAccessToken();
+                if (refreshed) return true;
+            }
+        }
+
+        // If no valid stored auth, proceed with new authentication
         const scopes = [
             "account_info.read",
             "files.metadata.read",
@@ -157,217 +122,66 @@ async function authenticate() {
             "files.content.read"
         ];
 
+        const redirectUri = `${window.location.origin}/auth-callback`;
         const authUrl = await client.auth.getAuthenticationUrl(
-            'http://localhost:8080/',
+            redirectUri,
             null,
             'code',
             'offline',
             scopes,
             'none',
-            false  // Set PKCE to false since we're using client secret
+            false
         );
 
-        console.log('\nPlease visit this URL to authenticate:');
-        console.log(authUrl);
-        console.log('\nWaiting for authentication...\n');
-
-        return new Promise((resolve, reject) => {
-            const server = http.createServer(async (req, res) => {
-                const parsedUrl = url.parse(req.url, true);
-
-                if (parsedUrl.pathname === '/') {
-                    const code = parsedUrl.query.code;
-
+        return new Promise((resolve) => {
+            window.addEventListener('message', async function handleAuthMessage(event) {
+                if (event.origin !== window.location.origin) return;
+                
+                try {
+                    const { code } = event.data;
                     if (code) {
-                        try {
-                            client.auth.setClientSecret(process.env.DROPBOX_CLIENT_SECRET);
-                            const tokenResponse = await client.auth.getAccessTokenFromCode(
-                                'http://localhost:8080/',
-                                code
-                            );
+                        client.auth.setClientSecret(config.DROPBOX_API_CONFIG.clientSecret);
+                        const tokenResponse = await client.auth.getAccessTokenFromCode(
+                            `${window.location.origin}/auth-callback`,
+                            code
+                        );
+                        
+                        const { access_token, refresh_token } = tokenResponse.result;
+                        
+                        // Store the authentication state
+                        storeAuthState(access_token, refresh_token);
 
-                            const { access_token, refresh_token } = tokenResponse.result;
+                        client = new Dropbox({
+                            accessToken: access_token,
+                            refreshToken: refresh_token,
+                            clientId: config.DROPBOX_API_CONFIG.clientId,
+                            clientSecret: config.DROPBOX_API_CONFIG.clientSecret
+                        });
 
-                            client = new Dropbox({ 
-                                accessToken: access_token,
-                                refreshToken: refresh_token,
-                                clientId: process.env.DROPBOX_CLIENT_ID,
-                                clientSecret: process.env.DROPBOX_CLIENT_SECRET
-                            });
-
-                            console.log('Successfully authenticated with Dropbox!');
-                            res.writeHead(200, { 'Content-Type': 'text/html' });
-                            res.end('Authentication successful! You can close this window.');
-                            server.close();
-                            resolve(true);
-                        } catch(err) {
-                            console.error('Failed to retrieve access token from Dropbox:', err);
-                            res.writeHead(400, { 'Content-Type': 'text/html' });
-                            res.end('Authentication failed. Please try again.');
-                            server.close();
-                            resolve(false);
-                        }
+                        console.log('Successfully authenticated with Dropbox!');
+                        window.removeEventListener('message', handleAuthMessage);
+                        resolve(true);
                     } else {
                         console.error('Failed to retrieve code from URL');
-                        res.writeHead(400, { 'Content-Type': 'text/html' });
-                        res.end('Authentication failed. Please try again.');
-                        server.close();
+                        window.removeEventListener('message', handleAuthMessage);
                         resolve(false);
                     }
+                } catch (error) {
+                    console.error('Failed to retrieve access token from Dropbox:', error);
+                    window.removeEventListener('message', handleAuthMessage);
+                    resolve(false);
                 }
-            });
+            }, { once: true });
 
-            server.listen(8080, () => {
-                console.log('Local server is running at http://localhost:8080/');
-            });
+            window.open(authUrl, '_blank');
         });
     } catch (error) {
         console.error('Dropbox authentication failed:', error);
         return false;
     }
-}
+};
 
-authenticate().then((result) => {
-    if (result) {
-        console.log('Authentication process completed successfully');
-    } else {
-        console.log('Authentication process failed');
-    }
-}).catch((error) => {
-    console.error('Authentication process encountered an error:', error);
-});
-
-module.exports = {
+export default {
     authenticate,
     initializeClient
 };
-
-// debug-env.js
-// import { Dropbox } from 'dropbox';
-// import { createServer } from 'http';
-// import { parse } from 'url';
-// import { randomBytes, createHash } from 'crypto';
-// import config from './config.js';
-
-// console.log('DropBox ID,Secret:', {
-//     DROPBOX_CLIENT_ID: config.DROPBOX_API_CONFIG.clientId,
-//     DROPBOX_CLIENT_SECRET: config.DROPBOX_API_CONFIG.clientSecret,
-// });
-
-// let client;
-
-// export const initializeClient = async () => {
-//     client = new Dropbox({ 
-//         clientId: config.DROPBOX_API_CONFIG.clientId,
-//         clientSecret: config.DROPBOX_API_CONFIG.clientSecret
-//     });
-// }
-
-// function generateRandomString(length) {
-//     return randomBytes(length).toString('hex').slice(0,length);
-// }
-
-// function generateCodeChallenge(codeVerifier) {
-//     const sha256 = createHash('sha256').update(codeVerifier).digest('base64');
-//     return sha256.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-// }
-
-// export const authenticate = async() => {
-//     try {
-//         if (!client) {
-//             await initializeClient();
-//         }
-//         const codeVerifier = generateRandomString(128);
-//         const codeChallenge = generateCodeChallenge(codeVerifier);
-        
-//         const scopes = [
-//             "account_info.read",
-//             "files.metadata.read",
-//             "files.content.write",
-//             "files.content.read"
-//         ];
-
-//         const authUrl = await client.auth.getAuthenticationUrl(
-//             'http://localhost:8080/',
-//             null,
-//             'code',
-//             'offline',
-//             scopes,
-//             'none',
-//             false  // Set PKCE to false since we're using client secret
-//         );
-
-//         console.log('\nPlease visit this URL to authenticate:');
-//         console.log(authUrl);
-//         console.log('\nWaiting for authentication...\n');
-
-//         return new Promise((resolve, reject) => {
-//             const server = createServer(async (req, res) => {
-//                 const parsedUrl = parse(req.url, true);
-
-//                 if (parsedUrl.pathname === '/') {
-//                     const code = parsedUrl.query.code;
-
-//                     if (code) {
-//                         try {
-//                             client.auth.setClientSecret(config.DROPBOX_API_CONFIG.clientSecret);
-//                             const tokenResponse = await client.auth.getAccessTokenFromCode(
-//                                 'http://localhost:8080/',
-//                                 code
-//                             );
-
-//                             const { access_token, refresh_token } = tokenResponse.result;
-
-//                             client = new Dropbox({ 
-//                                 accessToken: access_token,
-//                                 refreshToken: refresh_token,
-//                                 clientId: config.DROPBOX_API_CONFIG.clientId,
-//                                 clientSecret: config.DROPBOX_API_CONFIG.clientSecret
-//                             });
-
-//                             console.log('Successfully authenticated with Dropbox!');
-//                             res.writeHead(200, { 'Content-Type': 'text/html' });
-//                             res.end('Authentication successful! You can close this window.');
-//                             server.close();
-//                             resolve(true);
-//                         } catch(err) {
-//                             console.error('Failed to retrieve access token from Dropbox:', err);
-//                             res.writeHead(400, { 'Content-Type': 'text/html' });
-//                             res.end('Authentication failed. Please try again.');
-//                             server.close();
-//                             resolve(false);
-//                         }
-//                     } else {
-//                         console.error('Failed to retrieve code from URL');
-//                         res.writeHead(400, { 'Content-Type': 'text/html' });
-//                         res.end('Authentication failed. Please try again.');
-//                         server.close();
-//                         resolve(false);
-//                     }
-//                 }
-//             });
-
-//             server.listen(8080, () => {
-//                 console.log('Local server is running at http://localhost:8080/');
-//             });
-//         });
-//     } catch (error) {
-//         console.error('Dropbox authentication failed:', error);
-//         return false;
-//     }
-// }
-
-// // authenticate().then((result) => {
-// //     if (result) {
-// //         console.log('Authentication process completed successfully');
-// //     } else {
-// //         console.log('Authentication process failed');
-// //     }
-// // }).catch((error) => {
-// //     console.error('Authentication process encountered an error:', error);
-// // });
-
-// export default {
-//     authenticate,
-//     initializeClient
-// };

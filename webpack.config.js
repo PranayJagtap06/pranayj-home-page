@@ -1,13 +1,13 @@
 const path = require('path');
 const webpack = require('webpack');
-const Dotenv = require('dotenv-webpack');
+// const Dotenv = require('dotenv-webpack');
 const dotenv = require('dotenv');
 const CopyPlugin = require('copy-webpack-plugin');
 
 // Manually load dotenv
-// const env = dotenv.config().parsed || {};
+const env = dotenv.config().parsed || {};
 
-// console.log('Loaded Environment Variables:', env);
+console.log('Loaded Environment Variables:', env);
 
 module.exports = {
   mode: 'development',
@@ -34,7 +34,7 @@ module.exports = {
       "stream": require.resolve("stream-browserify"),
       "vm": require.resolve("vm-browserify"),
       "util": require.resolve("util/"),
-      // "dropbox": require.resolve("dropbox"),
+      "dropbox": require.resolve("dropbox"),
       "buffer": require.resolve('buffer/'),
       // "http": require.resolve('stream-http'),
       "url": require.resolve('url/'),
@@ -47,7 +47,7 @@ module.exports = {
   plugins: [
     new CopyPlugin({
       patterns: [
-        { from: 'public', to: '' },
+        // { from: 'public', to: '' },
         { from: 'index.html', to: '' },
         {from: 'styles.css', to: ''},
         {from: 'pranay_sq.jpg', to: ''},
@@ -67,14 +67,9 @@ module.exports = {
         // ...env,
         DROPBOX_CLIENT_ID: process.env.DROPBOX_CLIENT_ID,
         DROPBOX_CLIENT_SECRET: process.env.DROPBOX_CLIENT_SECRET,
+        'import.meta.env.VITE_DROPBOX_CLIENT_ID': JSON.stringify(process.env.DROPBOX_CLIENT_ID),
+        'import.meta.env.VITE_DROPBOX_CLIENT_SECRET': JSON.stringify(process.env.DROPBOX_CLIENT_SECRET),
       })
-    }),
-    // Fallback dotenv-webpack plugin
-    new Dotenv({
-      path: './.env',
-      safe: true,
-      systemvars: true,
-      defaults: false
     }),
     new webpack.ProvidePlugin({
       process: 'process/browser',
