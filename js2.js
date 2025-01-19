@@ -1,7 +1,11 @@
-// js2.js
+// import AuthenticationManager from "./debug-env.js";
+import browserSyncManager from "./bwsrsync.js";
+// import config from "./config.js";
+
 // Suggestions Manager Class
 class SearchSuggestionsManager {
-    constructor() {
+    constructor(syncManager) {
+        this.syncManager = syncManager;
         this.searchBar = document.querySelector('.search-bar');
         this.suggestionsContainer = document.createElement('div');
         this.suggestionsContainer.className = 'search-suggestions';
@@ -13,8 +17,48 @@ class SearchSuggestionsManager {
         this.recentSearches = [];
         this.debounceTimeout = null;
 
-        this.loadRecentSearches();
+        // this.loadRecentSearches();
+        // Initialize with synced data if available
+        this.initializeSyncedData();
         this.setupEventListeners();
+
+        // // Use synced data if available
+        // if (this.syncManager && this.syncManager.isAuthenticated) {
+        //     this.recentSearches = this.syncManager.searchHistory.map(item => item.term);
+        // } else {
+        //     this.loadRecentSearches();
+        // }
+
+    }
+
+    async initializeSyncedData() {
+        // if (this.syncManager && this.syncManager.isAuthenticated) {
+            try {
+                // Load search history from sync
+                // const syncedHistory = await this.syncManager.readFile(this.syncManager.filePaths.history) || [];
+                const localHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+                
+                // Convert local history to match sync format if needed
+                const formattedLocalHistory = localHistory.map(term => ({
+                    term,
+                    lastSearched: Date.now()
+                }));
+
+                // Merge histories
+                // this.recentSearches = this.syncManager.mergeSearchHistory(formattedLocalHistory, syncedHistory)
+                //     .map(item => item.term);
+
+                this.recentSearches = formattedLocalHistory.map(item => item.term);
+
+                // Update local storage
+                // localStorage.setItem('searchHistory', JSON.stringify(this.recentSearches));
+            } catch (error) {
+                console.warn('Failed to initialize synced data:', error);
+                // this.loadRecentSearches();
+            }
+        // } else {
+            // this.loadRecentSearches();
+        // }
     }
 
     // Initialize event listeners
@@ -29,12 +73,46 @@ class SearchSuggestionsManager {
         this.recentSearches = JSON.parse(localStorage.getItem('searchHistory') || '[]');
     }
 
-    // Save recent searches to localStorage
-    saveRecentSearch(query) {
-        if (query) {
-            this.recentSearches = [query, ...this.recentSearches.filter(s => s !== query)].slice(0, 10);
-            localStorage.setItem('searchHistory', JSON.stringify(this.recentSearches));
-        }
+    // // Save recent searches to localStorage
+    // async saveRecentSearch(query) {
+    //     if (!query) return;
+
+    //     const searchItem = {
+    //         term: query,
+    //         lastSearched: Date.now()
+    //     };
+
+    //     // if (this.syncManager && this.syncManager.isAuthenticated) {
+    //         try {
+    //             // Read existing history from Dropbox
+    //             // const syncedHistory = await this.syncManager.readFile(this.syncManager.filePaths.history) || [];
+                
+    //             // Merge with new search
+    //             // const mergedHistory = this.syncManager.mergeSearchHistory([searchItem], syncedHistory);
+                
+    //             // Update Dropbox
+    //             // await this.syncManager.writeFile(this.syncManager.filePaths.history, mergedHistory);
+                
+    //             // Update local recentSearches with terms only
+    //             var searchHist = localStorage.getItem('searchHistory') || '[]';
+    //             this.recentSearches = searchHist.push(searchItem).map(item => item.term);
+    //             localStorage.setItem('searchHistory', JSON.stringify(this.recentSearches));
+    //         } catch (error) {
+    //             console.warn('Failed to sync search term:', error);
+    //             // Fallback to local storage
+    //             // this.saveLocalSearch(query);
+    //         }
+    //     // } else {
+    //         // this.saveLocalSearch(query);
+    //     // }
+    // }
+
+    saveLocalSearch(query) {
+        this.recentSearches = [
+            query,
+            ...this.recentSearches.filter(s => s !== query)
+        ].slice(0, 10);
+        localStorage.setItem('searchHistory', JSON.stringify(this.recentSearches));
     }
 
     // Handle input changes
@@ -73,7 +151,7 @@ class SearchSuggestionsManager {
                         suggestion =>
                             !recentMatches.some(recent => recent.text === suggestion.text)
                     )
-                ].slice(0, 10); // Limit to 10 suggestions
+                ].slice(0, 30); // Limit to 30 suggestions
 
                 // Show suggestions if we have any
                 if (this.suggestions.length > 0) {
@@ -103,56 +181,98 @@ class SearchSuggestionsManager {
 
     // Fetch suggestions from search engines
     async fetchSuggestions(query) {
-        const endpoints = {
-            google: `https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(query)}`,
-            duckduckgo: `https://duckduckgo.com/ac/?q=${encodeURIComponent(query)}&type=list`,
-            bing: `https://api.bing.com/qsonhs.aspx?q=${encodeURIComponent(query)}`
-        };
+        // const endpoints = {
+        //     google: `https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(query)}`,
+        //     duckduckgo: `https://duckduckgo.com/ac/?q=${encodeURIComponent(query)}&type=list`,
+        //     bing: `https://api.bing.com/qsonhs.aspx?q=${encodeURIComponent(query)}`
+        // };
+
+        // try {
+        //     const response = await fetch(endpoints[this.currentEngine],
+        //         // {
+        //         //     method: 'GET',
+        //         //     mode: 'cors',
+        //         //     headers: {
+        //         //         'Accept': 'application/json'
+        //         //     }
+        //         // }
+        //     );
+
+        //     if (!response.ok) {
+        //         console.warn(`Failed to fetch suggestions from ${this.currentEngine}`);
+        //         return [];
+        //     }
+
+        //     const data = await response.json();
+
+        //     // Parse response based on search engine
+        //     switch (this.currentEngine) {
+        //         case 'google':
+        //             return (data[1] || []).map(item => ({
+        //                 text: item,
+        //                 type: 'suggestion',
+        //                 icon: '🔍'
+        //             }));
+        //         case 'duckduckgo':
+        //             return data.map(item => ({
+        //                 text: item.phrase,
+        //                 type: 'suggestion',
+        //                 icon: '🔍'
+        //             }));
+        //         case 'bing':
+        //             return data.AS.Results[0].Suggests.map(item => ({
+        //                 text: item.Txt,
+        //                 type: 'suggestion',
+        //                 icon: '🔍'
+        //             }));
+        //         default:
+        //             return [];
+        //     }
+        // } catch (error) {
+        //     console.error('Error fetching suggestions:', error);
+        //     return [];
+        // }
 
         try {
-            const response = await fetch(endpoints[this.currentEngine],
-                // {
-                //     method: 'GET',
-                //     mode: 'cors',
-                //     headers: {
-                //         'Accept': 'application/json'
-                //     }
-                // }
+            // Use Netlify function instead of direct API calls
+            const response = await fetch(
+                `/.netlify/functions/suggestions?query=${encodeURIComponent(query)}&engine=${this.currentEngine}`
             );
 
             if (!response.ok) {
-                console.warn(`Failed to fetch suggestions from ${this.currentEngine}`);
-                return [];
+                const errorText = await response.text();
+                console.error('Suggestions API request failed:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    errorText
+                });
+                throw new Error('Suggestions API request failed');
             }
 
-            const data = await response.json();
+            const suggestions = await response.json();
+            console.log('Raw Suggestions:', suggestions);
 
-            // Parse response based on search engine
-            switch (this.currentEngine) {
-                case 'google':
-                    return (data[1] || []).map(item => ({
-                        text: item,
-                        type: 'suggestion',
-                        icon: '🔍'
-                    }));
-                case 'duckduckgo':
-                    return data.map(item => ({
-                        text: item.phrase,
-                        type: 'suggestion',
-                        icon: '🔍'
-                    }));
-                case 'bing':
-                    return data.AS.Results[0].Suggests.map(item => ({
-                        text: item.Txt,
-                        type: 'suggestion',
-                        icon: '🔍'
-                    }));
-                default:
-                    return [];
+            // if (suggestions.error) {
+            //     throw new Error(suggestions.error);
+            // }
+
+            if (!suggestions || suggestions.length === 0) {
+                console.warn('No suggestions returned');
+                return this.getFallbackSuggestions(query);
             }
+
+            console.log('Internet Suggestions:', suggestions.map(s => s.text));
+
+            // Ensure that each suggestion has a 'text' property
+            return suggestions.map(suggestion => ({
+                text: suggestion.text || '', // Set a default value if 'text' is missing
+                type: 'suggestion',
+                icon: '🔍'
+            }));
+
         } catch (error) {
-            console.error('Error fetching suggestions:', error);
-            return [];
+            console.error('Failed to fetch suggestions:', error);
+            return this.getFallbackSuggestions(query);
         }
     }
 
@@ -192,6 +312,10 @@ class SearchSuggestionsManager {
 
     // Highlight matching text in suggestions
     highlightMatch(text) {
+        if (typeof text !== 'string') {
+            console.error('Invalid text type:', typeof text);
+            return text;
+          }
         const query = this.searchBar.value.trim().toLowerCase();
         const index = text.toLowerCase().indexOf(query);
         if (index === -1) return text;
@@ -238,13 +362,16 @@ class SearchSuggestionsManager {
 
     saveRecentSearch(query) {
         if (query) {
-            // Remove duplicates and limit to 10 recent searches
-            this.recentSearches = [
-                query,
-                ...this.recentSearches.filter(s => s !== query)
-            ].slice(0, 10);
-
-            localStorage.setItem('searchHistory', JSON.stringify(this.recentSearches));
+            try {
+                // Remove duplicates and limit to 10 recent searches
+                this.recentSearches = [
+                    query,
+                    ...this.recentSearches.filter(s => s !== query)
+                ];
+                localStorage.setItem('searchHistory', JSON.stringify(this.recentSearches));
+            } catch (error) {
+                console.error('Failed to save recent search:', error);
+            }
         }
     }
 
@@ -304,14 +431,27 @@ class SearchSuggestionsManager {
     }
 }
 
+let browserSync;
+let suggestionsManager;
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
+    // Initialize BrowserSyncManager
+    browserSync = new browserSyncManager();
+    let syncInitialized = false;
+    try {
+        await browserSync.initialize();
+        syncInitialized = true;
+    } catch (error) {
+        console.warn('Failed to initialize sync:', error);
+        // Continue without sync functionality
+    }
     const searchBar = document.querySelector('.search-bar');
     const searchEngines = document.querySelector('.search-engines');
     const searchEngineFavicon = document.querySelector('.search-engine-favicon');
     const recentSearches = document.querySelector('.recent-searches');
     const mostVisited = document.querySelector('.most-visited');
-    const suggestionsManager = new SearchSuggestionsManager();
+    
+    suggestionsManager = new SearchSuggestionsManager(syncInitialized ? browserSync : null);
 
     // Search engine functionality
     const searchEngineData = {
@@ -394,8 +534,30 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Most visited sites functionality
-    function updateMostVisited() {
-        const sites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
+    async function updateMostVisited() {
+        // let sites = [];
+        // if (browserSync && browserSync.isAuthenticated) {
+            // try {
+                // const syncedFavorites = await browserSync.readFile(browserSync.filePaths.favorites) || [];
+                const sites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
+                
+                // Merge favorites
+                // sites = browserSync.mergeFavorites(localFavorites, syncedFavorites);
+                
+                // Update local storage with merged data
+                // localStorage.setItem('mostVisited', JSON.stringify(sites));
+            // } catch (error) {
+                // console.warn('Failed to sync favorites:', error);
+                // sites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
+            // }
+        // } else {
+        //     sites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
+        // }
+        // const sites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
+        // const sortedSites = sites.sort((a, b) => {
+            // if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
+            // return (a.order || 0) - (b.order || 0);
+        // });
         const sortedSites = sites.sort((a, b) => (b.pinned || 0) - (a.pinned || 0));
 
         mostVisited.innerHTML = sortedSites.map((site, index) => `
@@ -456,19 +618,47 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Add event listeners
         addDragAndDropListeners();
+
         document.querySelector('.add-favorite-site').addEventListener('click', addNewSite);
 
     }
 
     // updateMostVisited();
 
-    function removeSite(index) {
-        const sites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
-        if (index >= 0 && index < sites.length) {
-            sites.splice(index, 1);
-            localStorage.setItem('mostVisited', JSON.stringify(sites));
-            updateMostVisited();
-        }
+    async function removeSite(index) {
+        // if (browserSync && browserSync.isAuthenticated) {
+            try {
+                // const sites = await browserSync.readFile(browserSync.filePaths.favorites) || [];
+                const sitesLocal = JSON.parse(localStorage.getItem('mostVisited') || '[]');
+                // if (sites.splice(index, 1) == sitesLocal.splice(index, 1)) {
+                    // await browserSync.writeFile(browserSync.filePaths.favorites, sites);
+                sitesLocal.splice(index, 1);
+                localStorage.setItem('mostVisited', JSON.stringify(sitesLocal));
+                console.log('Favorite sites removed successfully');
+                // } else {
+                //     console.log('Favorite sites are out of sync, `index` failed to match. Removing from local storage only.');
+                // }
+            } catch (error) {
+                console.error('Failed to remove site:', error);
+                // Fallback to local storage
+                // const sites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
+                // sites.splice(index, 1);
+                // localStorage.setItem('mostVisited', JSON.stringify(sites));
+                // await browserSync.writeFile(browserSync.filePaths.favorites, sites);
+            }
+        // } else {
+        //     const sites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
+        //     sites.splice(index, 1);
+        //     localStorage.setItem('mostVisited', JSON.stringify(sites));
+        // }
+        updateMostVisited();
+
+        // const sites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
+        // if (index >= 0 && index < sites.length) {
+        //     sites.splice(index, 1);
+        //     localStorage.setItem('mostVisited', JSON.stringify(sites));
+        //     updateMostVisited();
+        // }
     }
 
     function addDragAndDropListeners() {
@@ -611,7 +801,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function addNewSite() {
+    async function addNewSite() {
         const url = prompt('Enter the website URL:');
         if (url) {
             try {
@@ -620,26 +810,82 @@ document.addEventListener('DOMContentLoaded', function () {
                     title: siteDomain.replace(/^www\./, ''),
                     favicon: `https://${siteDomain}/favicon.ico`,
                     url: url,
-                    pinned: false
+                    pinned: false,
+                    lastModified: Date.now()
                 };
-
+    
+                // if (browserSync && browserSync.isAuthenticated) {
+                //     try {
+                //         // Read existing favorites
+                //         const syncedFavorites = await browserSync.readFile(browserSync.filePaths.favorites) || [];
+                //         syncedFavorites.push(newSite);
+                //         const sitesLocal = JSON.parse(localStorage.getItem('mostVisited') || '[]');
+                //         // Merge with new site
+                //         const mergedFavorites = browserSync.mergeFavorites(sitesLocal, syncedFavorites);
+                        
+                //         // Update Dropbox
+                //         await browserSync.writeFile(browserSync.filePaths.favorites, mergedFavorites);
+                        
+                //         // Update local storage
+                //         localStorage.setItem('mostVisited', JSON.stringify(mergedFavorites));
+                //     } catch (error) {
+                //         console.warn('Failed to sync new site:', error);
+                //         // Fallback to local storage
+                //         const currentSites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
+                //         localStorage.setItem('mostVisited', JSON.stringify([...currentSites, newSite]));
+                //     }
+                // } else {
                 const currentSites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
-                localStorage.setItem('mostVisited', JSON.stringify([...currentSites, newSite]));
+                currentSites.push(newSite);
+                localStorage.setItem('mostVisited', JSON.stringify(currentSites));
+                // }
+                
                 updateMostVisited();
-            } catch {
+            } catch (error) {
+                console.error('Failed to add new site:', error);
                 alert('Please enter a valid URL');
             }
         }
     }
 
-    function updateSiteOrder() {
+    async function updateSiteOrder() {
         const sites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
         const newOrder = Array.from(mostVisited.querySelectorAll('.site-item')).map(item =>
             sites[parseInt(item.dataset.index)]
         ).filter(Boolean);
-
+    
+        // if (browserSync && browserSync.isAuthenticated) {
+        //     try {
+        //         const sites = await browserSync.readFile(browserSync.filePaths.favorites) || [];
+        //         const reorderedSites = newOrder.map(index => ({
+        //             ...sites[index],
+        //             lastModified: Date.now()
+        //         })).filter(Boolean);
+                
+        //         // Merge with existing favorites
+        //         const mergedFavorites = browserSync.mergeFavorites(reorderedSites, sites);
+                
+        //         // Update Dropbox
+        //         await browserSync.writeFile(browserSync.filePaths.favorites, mergedFavorites);
+                
+        //         // Update local storage
+        //         localStorage.setItem('mostVisited', JSON.stringify(mergedFavorites));
+        //     } catch (error) {
+        //         console.warn('Failed to sync site order:', error);
+        //         // Fallback to local storage update
+        //         updateLocalSiteOrder(newOrder);
+        //     }
+        // } else {
+        //     updateLocalSiteOrder(newOrder);
+        // }
         localStorage.setItem('mostVisited', JSON.stringify(newOrder));
         updateMostVisited();
+    }
+
+    function updateLocalSiteOrder(newOrder) {
+        const sites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
+        const reorderedSites = newOrder.map(index => sites[index]).filter(Boolean);
+        localStorage.setItem('mostVisited', JSON.stringify(reorderedSites));
     }
 
     let draggedIndex = null;
@@ -669,4 +915,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // enableTouchReorder();
     updateMostVisited();
 
+    // Set up periodic sync if needed
+    if (syncInitialized) {
+        setInterval(() => browserSync.syncData(), 30000); // Sync every 5 minutes
+    }
+
 });
+

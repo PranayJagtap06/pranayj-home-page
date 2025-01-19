@@ -1,5 +1,4 @@
 // browserSyncManager.js
-// import config from './config.js';
 import { initializeClient, authenticate, clearStoredAuth, refreshAccessToken } from './debug-env.js';
 
 class browserSyncManager {
@@ -29,30 +28,6 @@ class browserSyncManager {
 
     async initialize() {
         try {
-            // await this.authManager.initialize();
-            // const client = this.authManager.getClient();
-
-            // if (!client) {
-            //     console.log('No client found, initiating authentication...');
-            //     const authSuccess = await this.authManager.authenticate();
-            //     if (!authSuccess) {
-            //         throw new Error('Authentication failed');
-            //     }
-            // }
-
-            // // Verify authentication status
-            // if (!this.authManager.getClient()?.auth?.getAccessToken()) {
-            //     console.log('Invalid authentication state. Trying to Re-authenticate...');
-            //     this.authManager.clearAuth();
-            //     this.initialize()
-            // }
-            // // Verify authentication status
-            // if (!client || !client.auth || !client.auth.getAccessToken()) {
-            //     console.error('Authentication failed or incomplete');
-            //     this.isAuthenticated = false;
-            //     return false;
-            // }
-
             if (!this.dbx) {
                 this.dbx = await initializeClient();
             }
@@ -185,7 +160,7 @@ class browserSyncManager {
                         autorename: true,
                         mute: false
                     });
-                    console.log('File downloaded successfully');
+                    console.log('File uploaded successfully');
                     const data = JSON.parse(await response.fileBlob);
 
                     // Update cache
@@ -378,37 +353,61 @@ class browserSyncManager {
         }
     }
 
+    normalizeSearchHistory(history) {
+        console.log(`Data: ${JSON.stringify(history)}`);
+        console.log(`Data type: ${typeof history}`);
+        return history.map(item => ({
+           term: item.term || item, // Handle both string and object format
+            lastSearched: item.lastSearched || Date.now()
+       }));
+    }
+
+    normalizeFavorites(favorites) {
+        return favorites.map(item => ({
+            title: item.title || '',
+           favicon: item.favicon || '',
+            url: item.url || '',
+           pinned: item.pinned || false,
+            lastModified: item.lastModified || Date.now(),
+            order: item.order || 0
+        }));
+    }
+
     mergeSearchHistory(local, remote) {
+        const normalizedLocal = this.normalizeSearchHistory(local);
+        const normalizedRemote = this.normalizeSearchHistory(remote);
+
         const merged = new Map();
 
         // Process local entries
-        local.forEach(item => {
+        normalizedLocal.forEach(item => {
             merged.set(item.term, item);
         });
 
         // Merge remote entries
-        remote.forEach(item => {
+        normalizedRemote.forEach(item => {
             const existingItem = merged.get(item.term);
             if (!existingItem || item.lastSearched > existingItem.lastSearched) {
                 merged.set(item.term, item);
             }
         });
 
-        return Array.from(merged.values())
-            .sort((a, b) => b.lastSearched - a.lastSearched);
-            // .slice(0, 10);
+        return Array.from(merged.values()).sort((a, b) => b.lastSearched - a.lastSearched);
     }
 
     mergeFavorites(local, remote) {
+        const normalizedLocal = this.normalizeFavorites(local);
+        const normalizedRemote = this.normalizeFavorites(remote);
+
         const merged = new Map();
 
         // Process local entries
-        local.forEach(item => {
+         normalizedLocal.forEach(item => {
             merged.set(item.url, item);
         });
 
         // Merge remote entries
-        remote.forEach(item => {
+        normalizedRemote.forEach(item => {
             const existingItem = merged.get(item.url);
             if (!existingItem || item.lastModified > existingItem.lastModified) {
                 merged.set(item.url, item);
@@ -417,20 +416,21 @@ class browserSyncManager {
 
         return Array.from(merged.values())
             .sort((a, b) => {
-                // Sort by pinned status first
+                 // Sort by pinned status first
                 if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
                 // Then by order if available
-                if (a.order !== b.order) return a.order - b.order;
+                 if (a.order !== b.order) return (a.order || 0) - (b.order || 0);
                 // Finally by title
-                return a.title.localeCompare(b.title);
-            });
+                return (a.title || '').localeCompare(b.title || '');
+           });
     }
 
     async syncSearchHistory() {
         try {
             const localData = JSON.parse(localStorage.getItem('searchHistory') || '[]')
-                .map(term => ({ term, lastSearched: Date.now() }));
-            const remoteData = await this.readFile(this.filePaths.history) || [];
+                // .map(term => ({ term, lastSearched: Date.now() }));
+                
+            const remoteData = await this.readFile(this.filePaths.history);
 
             const mergedData = this.mergeSearchHistory(localData, remoteData);
             await this.writeFile(this.filePaths.history, mergedData);
