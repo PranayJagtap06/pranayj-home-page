@@ -13,8 +13,8 @@ class browserSyncManager {
 
         // File paths in Dropbox
         this.filePaths = {
-            history: '/Dropbox/Apps/pranayj-home-page/search_history.json',
-            favorites: '/Dropbox/Apps/pranayj-home-page/favorites.json'
+            history: './search_history.json',
+            favorites: './favorites.json'
         };
 
         // Initialize offline handling
@@ -375,18 +375,18 @@ class browserSyncManager {
     }
 
     mergeSearchHistory(local, remote) {
-        const normalizedLocal = this.normalizeSearchHistory(local);
-        const normalizedRemote = this.normalizeSearchHistory(remote);
+        // const normalizedLocal = this.normalizeSearchHistory(local);
+        // const normalizedRemote = this.normalizeSearchHistory(remote);
 
         const merged = new Map();
 
         // Process local entries
-        normalizedLocal.forEach(item => {
+        local.forEach(item => {
             merged.set(item.term, item);
         });
 
         // Merge remote entries
-        normalizedRemote.forEach(item => {
+        remote.forEach(item => {
             const existingItem = merged.get(item.term);
             if (!existingItem || item.lastSearched > existingItem.lastSearched) {
                 merged.set(item.term, item);
@@ -397,18 +397,18 @@ class browserSyncManager {
     }
 
     mergeFavorites(local, remote) {
-        const normalizedLocal = this.normalizeFavorites(local);
-        const normalizedRemote = this.normalizeFavorites(remote);
+        // const normalizedLocal = this.normalizeFavorites(local);
+        // const normalizedRemote = this.normalizeFavorites(remote);
 
         const merged = new Map();
 
         // Process local entries
-         normalizedLocal.forEach(item => {
+         local.forEach(item => {
             merged.set(item.url, item);
         });
 
         // Merge remote entries
-        normalizedRemote.forEach(item => {
+        remote.forEach(item => {
             const existingItem = merged.get(item.url);
             if (!existingItem || item.lastModified > existingItem.lastModified) {
                 merged.set(item.url, item);
@@ -450,7 +450,7 @@ class browserSyncManager {
     async syncFavorites() {
         try {
             const localData = JSON.parse(localStorage.getItem('mostVisited') || '[]');
-            const remoteData = await this.readFile(this.filePaths.favorites) || [];
+            const remoteData = await this.readFile(this.filePaths.favorites);
 
             const mergedData = this.mergeFavorites(localData, remoteData);
             await this.writeFile(this.filePaths.favorites, mergedData);
