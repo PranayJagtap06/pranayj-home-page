@@ -1,7 +1,7 @@
 // debug-env.js
+import config from './config.js';
 import { Dropbox } from 'dropbox';
 import { randomBytes, createHash } from 'crypto';
-import config from './config.js';
 
 console.log('DropBox ID,Secret:', {
     DROPBOX_CLIENT_ID: config.DROPBOX_API_CONFIG.clientId ? 'present' : 'not present',

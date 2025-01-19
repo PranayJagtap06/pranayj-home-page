@@ -5,9 +5,9 @@ const dotenv = require('dotenv');
 const CopyPlugin = require('copy-webpack-plugin');
 
 // Manually load dotenv
-// const env = dotenv.config().parsed || {};
+const env = dotenv.config().parsed || {};
 
-// console.log('Loaded Environment Variables:', env);
+console.log('Loaded Environment Variables:', env);
 
 module.exports = {
   mode: 'development',
