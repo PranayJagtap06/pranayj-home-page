@@ -13,8 +13,8 @@ class browserSyncManager {
 
         // File paths in Dropbox
         this.filePaths = {
-            history: './search_history.json',
-            favorites: './favorites.json'
+            history: '/search_history.json',
+            favorites: '/favorites.json'
         };
 
         // Initialize offline handling
