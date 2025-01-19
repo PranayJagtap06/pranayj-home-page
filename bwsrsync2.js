@@ -11,7 +11,7 @@ class browserSyncManager {
         this.offlineQueue = [];
         this.lastSync = null;
         this.syncInProgress = false;
-        
+
         // File paths in Dropbox
         this.filePaths = {
             history: '/search_history.json',
@@ -31,7 +31,7 @@ class browserSyncManager {
         try {
             // await this.authManager.initialize();
             // const client = this.authManager.getClient();
-            
+
             // if (!client) {
             //     console.log('No client found, initiating authentication...');
             //     const authSuccess = await this.authManager.authenticate();
@@ -56,7 +56,7 @@ class browserSyncManager {
             if (!this.dbx) {
                 this.dbx = await initializeClient();
             }
-            
+
             if (!this.isAuthenticated) {
                 await authenticate();
                 this.isAuthenticated = true;
@@ -115,7 +115,7 @@ class browserSyncManager {
         if (!navigator.onLine || this.syncInProgress) return;
 
         this.syncInProgress = true;
-        
+
         try {
             while (this.offlineQueue.length > 0) {
                 const task = this.offlineQueue.shift();
@@ -154,7 +154,7 @@ class browserSyncManager {
             ...operation,
             timestamp: Date.now()
         });
-        
+
         if (navigator.onLine) {
             this.processOfflineQueue();
         }
@@ -173,28 +173,45 @@ class browserSyncManager {
 
             // First check if the file exists
             try {
-                await client.filesGetMetadata({path});
+                await this.dbx.filesGetMetadata({ path });
             } catch (error) {
                 if (error.status === 409) {
                     console.log('File does not exist, creating empty file:', path);
                     // Create empty file
-                    await this.writeFile(path, []);
+                    await this.dbx.filesUpload({
+                        path,
+                        contents: JSON.stringify([]),
+                        mode: 'add',
+                        autorename: true,
+                        mute: false
+                    });
+                    console.log('File downloaded successfully');
+                    const data = JSON.parse(await response.fileBlob);
+
+                    // Update cache
+                    this.localCache.set(path, {
+                        data,
+                        timestamp: Date.now()
+                    });
                     return [];
                 }
-                throw error;
+                // throw error;
+                console.error(`Failed to get file metadata ${path}:`, error);
             }
 
-            const response = await client.filesDownload({ path, auth: client.auth });
+            const response = await this.dbx.filesDownload({ path });
             console.log('File downloaded successfully');
-            const data = JSON.parse(await response.fileBlob.text());
-            
+            const blob = await response.fileBlob;
+            // const data = await blob.JSON();
+            // const data = JSON.parse(text);
+
             // Update cache
             this.localCache.set(path, {
-                data,
+                blob,
                 timestamp: Date.now()
             });
-            
-            return data;
+
+            return blob;
         } catch (error) {
             console.error(`Failed to read file ${path}:`, error);
             // Check if it's an authentication error
@@ -222,15 +239,17 @@ class browserSyncManager {
             const client = this.dbx;
             console.log('Attempting to write file:', path);
 
-            await client.filesUpload({
+            await this.dbx.filesUpload({
                 path,
-                auth: client.auth,
                 contents: JSON.stringify(data),
-                mode: 'overwrite'
+                mode: 'overwrite',
+                autorename: false,
+                mute: false
             });
             console.log('File uploaded successfully.');
 
             // Update cache
+
             this.localCache.set(path, {
                 data,
                 timestamp: Date.now()
@@ -265,23 +284,21 @@ class browserSyncManager {
 
             // First check if the file exists
             try {
-                await client.filesGetMetadata({path});
+                await this.dbx.filesGetMetadata({ path });
             } catch (error) {
                 if (error.status === 409) {
-                    console.log('File does not exist, creating empty file:', path);
-                    // Create empty file
-                    // await this.writeFile(path, []);
-                    return null;
+                    console.log('File does not exist, nothing to delete:', path);
+                    return [];
                 }
                 throw error;
             }
 
             const updatedData = data.filter(item => {
-                return path === this.filePaths.history ? 
-                    item.term !== itemId : 
+                return path === this.filePaths.history ?
+                    item.term !== itemId :
                     item.url !== itemId;
             });
-            
+
             await this.writeFile(path, updatedData);
         } catch (error) {
             console.error(`Failed to delete item from ${path}:`, error);
@@ -313,12 +330,10 @@ class browserSyncManager {
 
             // First check if the file exists
             try {
-                await client.filesGetMetadata({path});
+                await this.dbx.filesGetMetadata({ path });
             } catch (error) {
                 if (error.status === 409) {
-                    console.log('File does not exist, creating empty file:', path);
-                    // Create empty file
-                    // await this.writeFile(path, []);
+                    console.log('File does not exist, nothing to update:', path);
                     return null;
                 }
                 throw error;
@@ -328,7 +343,7 @@ class browserSyncManager {
                 ...data[index],
                 lastModified: Date.now()
             }));
-            
+
             await this.writeFile(path, reorderedData);
         } catch (error) {
             console.error('Failed to update order:', error);
@@ -365,12 +380,12 @@ class browserSyncManager {
 
     mergeSearchHistory(local, remote) {
         const merged = new Map();
-        
+
         // Process local entries
         local.forEach(item => {
             merged.set(item.term, item);
         });
-        
+
         // Merge remote entries
         remote.forEach(item => {
             const existingItem = merged.get(item.term);
@@ -378,20 +393,20 @@ class browserSyncManager {
                 merged.set(item.term, item);
             }
         });
-        
+
         return Array.from(merged.values())
-            .sort((a, b) => b.lastSearched - a.lastSearched)
-            .slice(0, 10);
+            .sort((a, b) => b.lastSearched - a.lastSearched);
+            // .slice(0, 10);
     }
 
     mergeFavorites(local, remote) {
         const merged = new Map();
-        
+
         // Process local entries
         local.forEach(item => {
             merged.set(item.url, item);
         });
-        
+
         // Merge remote entries
         remote.forEach(item => {
             const existingItem = merged.get(item.url);
@@ -399,15 +414,15 @@ class browserSyncManager {
                 merged.set(item.url, item);
             }
         });
-        
+
         return Array.from(merged.values())
             .sort((a, b) => {
                 // Sort by pinned status first
                 if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
                 // Then by order if available
-                if (a.order !== b.order) return a.order - b.order;
+                if (a.order !== b.order) return (a.order || 0) - (b.order || 0);
                 // Finally by title
-                return a.title.localeCompare(b.title);
+                return (a.title || '').localeCompare(b.title || '');
             });
     }
 
@@ -416,14 +431,14 @@ class browserSyncManager {
             const localData = JSON.parse(localStorage.getItem('searchHistory') || '[]')
                 .map(term => ({ term, lastSearched: Date.now() }));
             const remoteData = await this.readFile(this.filePaths.history) || [];
-            
+
             const mergedData = this.mergeSearchHistory(localData, remoteData);
             await this.writeFile(this.filePaths.history, mergedData);
-            
+
             // Update local storage
-            localStorage.setItem('searchHistory', 
+            localStorage.setItem('searchHistory',
                 JSON.stringify(mergedData.map(item => item.term)));
-            
+
             return mergedData;
         } catch (error) {
             console.error('Failed to sync search history:', error);
@@ -435,13 +450,13 @@ class browserSyncManager {
         try {
             const localData = JSON.parse(localStorage.getItem('mostVisited') || '[]');
             const remoteData = await this.readFile(this.filePaths.favorites) || [];
-            
+
             const mergedData = this.mergeFavorites(localData, remoteData);
             await this.writeFile(this.filePaths.favorites, mergedData);
-            
+
             // Update local storage
             localStorage.setItem('mostVisited', JSON.stringify(mergedData));
-            
+
             return mergedData;
         } catch (error) {
             console.error('Failed to sync favorites:', error);

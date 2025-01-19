@@ -4,14 +4,14 @@ import { randomBytes, createHash } from 'crypto';
 import config from './config.js';
 
 console.log('DropBox ID,Secret:', {
-    DROPBOX_CLIENT_ID: config.DROPBOX_API_CONFIG.clientId,
-    DROPBOX_CLIENT_SECRET: config.DROPBOX_API_CONFIG.clientSecret,
+    DROPBOX_CLIENT_ID: config.DROPBOX_API_CONFIG.clientId ? 'present' : 'not present',
+    DROPBOX_CLIENT_SECRET: config.DROPBOX_API_CONFIG.clientSecret ? 'present' : 'not present',
 });
 
 let client;
 const AUTH_STATE_KEY = 'dropbox_auth_state';
 const TOKEN_EXPIRY_KEY = 'dropbox_token_expiry';
-const TOKEN_EXPIRY_DAYS = 30; // Token valid for 30 days
+const TOKEN_EXPIRY_DAYS = 15; // Token valid for 15 days
 
 export const initializeClient = async () => {
     // if (client) return client;
@@ -65,7 +65,7 @@ function generateCodeChallenge(codeVerifier) {
 function storeAuthState(access_token, refresh_token) {
     const authState = JSON.stringify({ access_token, refresh_token });
     localStorage.setItem(AUTH_STATE_KEY, authState);
-    
+
     // Set token expiry
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + TOKEN_EXPIRY_DAYS);
@@ -102,7 +102,7 @@ export const authenticate = async () => {
 
         if (storedAuth && tokenExpiry) {
             const expiryDate = new Date(parseInt(tokenExpiry));
-            
+
             if (expiryDate > new Date()) {
                 console.log('Using stored authentication');
                 return true;
@@ -135,7 +135,7 @@ export const authenticate = async () => {
         return new Promise((resolve) => {
             window.addEventListener('message', async function handleAuthMessage(event) {
                 if (event.origin !== window.location.origin) return;
-                
+
                 try {
                     const { code } = event.data;
                     if (code) {
@@ -144,9 +144,9 @@ export const authenticate = async () => {
                             `${window.location.origin}/auth-callback`,
                             code
                         );
-                        
+
                         const { access_token, refresh_token } = tokenResponse.result;
-                        
+
                         // Store the authentication state
                         storeAuthState(access_token, refresh_token);
 
