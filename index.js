@@ -463,7 +463,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             localStorage.setItem('mostVisited', JSON.stringify(sitesLocal));
             console.log('Favorite sites removed successfully');
             // sync with dropbox
-            if(syncInitialized){
+            if (syncInitialized) {
                 await browserSync.syncFavorites();
             }
         } catch (error) {
@@ -628,8 +628,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                 const currentSites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
                 currentSites.push(newSite);
                 localStorage.setItem('mostVisited', JSON.stringify(currentSites));
-                 // sync with dropbox
-                 if(syncInitialized){
+                // sync with dropbox
+                if (syncInitialized) {
                     await browserSync.syncFavorites();
                 }
                 updateMostVisited();
@@ -647,7 +647,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         ).filter(Boolean);
         localStorage.setItem('mostVisited', JSON.stringify(newOrder));
         // sync with dropbox
-        if(syncInitialized){
+        if (syncInitialized) {
             await browserSync.syncFavorites();
         }
         updateMostVisited();

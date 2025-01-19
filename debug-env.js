@@ -65,7 +65,7 @@ function generateCodeChallenge(codeVerifier) {
 function storeAuthState(access_token, refresh_token) {
     const authState = JSON.stringify({ access_token, refresh_token });
     localStorage.setItem(AUTH_STATE_KEY, authState);
-    
+
     // Set token expiry
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + TOKEN_EXPIRY_DAYS);
@@ -102,7 +102,7 @@ export const authenticate = async () => {
 
         if (storedAuth && tokenExpiry) {
             const expiryDate = new Date(parseInt(tokenExpiry));
-            
+
             if (expiryDate > new Date()) {
                 console.log('Using stored authentication');
                 return true;
@@ -135,7 +135,7 @@ export const authenticate = async () => {
         return new Promise((resolve) => {
             window.addEventListener('message', async function handleAuthMessage(event) {
                 if (event.origin !== window.location.origin) return;
-                
+
                 try {
                     const { code } = event.data;
                     if (code) {
@@ -144,9 +144,9 @@ export const authenticate = async () => {
                             `${window.location.origin}/auth-callback`,
                             code
                         );
-                        
+
                         const { access_token, refresh_token } = tokenResponse.result;
-                        
+
                         // Store the authentication state
                         storeAuthState(access_token, refresh_token);
 

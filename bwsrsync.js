@@ -180,6 +180,7 @@ class browserSyncManager {
             const blob = await response.fileBlob;
             // const data = await blob.JSON();
             // const data = JSON.parse(text);
+            console.log(`file ${path}: ${blob}`);
 
             // Update cache
             this.localCache.set(path, {
@@ -358,17 +359,17 @@ class browserSyncManager {
         console.log(`Data: ${JSON.stringify(history)}`);
         console.log(`Data type: ${typeof history}`);
         return history.forEach(item => ({
-           term: item.term || item, // Handle both string and object format
+            term: item.term || item, // Handle both string and object format
             lastSearched: item.lastSearched || Date.now()
-       }));
+        }));
     }
 
     normalizeFavorites(favorites) {
         return favorites.forEach(item => ({
             title: item.title || '',
-           favicon: item.favicon || '',
+            favicon: item.favicon || '',
             url: item.url || '',
-           pinned: item.pinned || false,
+            pinned: item.pinned || false,
             lastModified: item.lastModified || Date.now(),
             order: item.order || 0
         }));
@@ -403,7 +404,7 @@ class browserSyncManager {
         const merged = new Map();
 
         // Process local entries
-         local.forEach(item => {
+        local.forEach(item => {
             merged.set(item.url, item);
         });
 
@@ -417,20 +418,20 @@ class browserSyncManager {
 
         return Array.from(merged.values())
             .sort((a, b) => {
-                 // Sort by pinned status first
+                // Sort by pinned status first
                 if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
                 // Then by order if available
-                 if (a.order !== b.order) return (a.order || 0) - (b.order || 0);
+                if (a.order !== b.order) return (a.order || 0) - (b.order || 0);
                 // Finally by title
                 return (a.title || '').localeCompare(b.title || '');
-           });
+            });
     }
 
     async syncSearchHistory() {
         try {
             const localData = JSON.parse(localStorage.getItem('searchHistory') || '[]')
-                // .map(term => ({ term, lastSearched: Date.now() }));
-                
+            // .map(term => ({ term, lastSearched: Date.now() }));
+
             const remoteData = await this.readFile(this.filePaths.history);
 
             const mergedData = this.mergeSearchHistory(localData, remoteData);
