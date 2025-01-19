@@ -202,6 +202,8 @@ class browserSyncManager {
             const response = await this.dbx.filesDownload({ path });
             console.log('File downloaded successfully');
             const blob = await response.fileBlob;
+            console.log(response);
+            console.log(blob);
             // const data = await blob.JSON();
             // const data = JSON.parse(text);
 
