@@ -322,8 +322,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     browserSync = new browserSyncManager();
     let syncInitialized = false;
     try {
-        await browserSync.initialize();
-        syncInitialized = true;
+        if (await browserSync.initialize()) {
+            syncInitialized = true;
+        } else {
+            syncInitialized = true;
+            console.log("Failed to initialize sync")
+        }
     } catch (error) {
         console.warn('Failed to initialize sync:', error);
         // Continue without sync functionality

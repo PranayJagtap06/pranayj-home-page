@@ -21,25 +21,25 @@ const loadConfig = () => {
         config.DROPBOX_API_CONFIG.clientSecret = process.env.DROPBOX_CLIENT_SECRET ||
             '';
 
-        console.log('Loaded Dropbox Config:', {
-            clientId: config.DROPBOX_API_CONFIG.clientId ? 'Present' : 'Missing',
-            clientSecret: config.DROPBOX_API_CONFIG.clientSecret ? 'Present' : 'Missing'
-        });
+        // console.log('Loaded Dropbox Config:', {
+        //     clientId: config.DROPBOX_API_CONFIG.clientId ? 'Present' : 'Missing',
+        //     clientSecret: config.DROPBOX_API_CONFIG.clientSecret ? 'Present' : 'Missing'
+        // });
 
-        console.group('Dropbox Config Loading');
-        console.log('Window ClientId:', process.env.DROPBOX_CLIENT_ID);
-        console.log('Final ClientId:', config.DROPBOX_API_CONFIG.clientId);
-        console.log('Window ClientSecret:', process.env.DROPBOX_CLIENT_SECRET ? 'Present' : 'Missing');
-        console.groupEnd();
+        // console.group('Dropbox Config Loading');
+        // console.log('Window ClientId:', process.env.DROPBOX_CLIENT_ID);
+        // console.log('Final ClientId:', config.DROPBOX_API_CONFIG.clientId);
+        // console.log('Window ClientSecret:', process.env.DROPBOX_CLIENT_SECRET ? 'Present' : 'Missing');
+        // console.groupEnd();
 
-        console.log('Dropbox Config Loading:', {
-            windowClientId: process.env.DROPBOX_CLIENT_ID,
-            metaEnvClientId: import.meta.env?.VITE_DROPBOX_CLIENT_ID,
-            finalClientId: config.DROPBOX_API_CONFIG.clientId,
+        // console.log('Dropbox Config Loading:', {
+        //     windowClientId: process.env.DROPBOX_CLIENT_ID,
+        //     metaEnvClientId: import.meta.env?.VITE_DROPBOX_CLIENT_ID,
+        //     finalClientId: config.DROPBOX_API_CONFIG.clientId,
 
-            windowClientSecret: process.env.DROPBOX_CLIENT_SECRET ? 'Present' : 'Missing',
-            metaEnvClientSecret: import.meta.env?.VITE_DROPBOX_CLIENT_SECRET ? 'Present' : 'Missing',
-        });
+        //     windowClientSecret: process.env.DROPBOX_CLIENT_SECRET ? 'Present' : 'Missing',
+        //     metaEnvClientSecret: import.meta.env?.VITE_DROPBOX_CLIENT_SECRET ? 'Present' : 'Missing',
+        // });
 
 
         window.config = config;

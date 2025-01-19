@@ -4,14 +4,14 @@ import { randomBytes, createHash } from 'crypto';
 import config from './config.js';
 
 console.log('DropBox ID,Secret:', {
-    DROPBOX_CLIENT_ID: config.DROPBOX_API_CONFIG.clientId,
-    DROPBOX_CLIENT_SECRET: config.DROPBOX_API_CONFIG.clientSecret,
+    DROPBOX_CLIENT_ID: config.DROPBOX_API_CONFIG.clientId ? 'present' : 'not present',
+    DROPBOX_CLIENT_SECRET: config.DROPBOX_API_CONFIG.clientSecret ? 'present' : 'not present',
 });
 
 let client;
 const AUTH_STATE_KEY = 'dropbox_auth_state';
 const TOKEN_EXPIRY_KEY = 'dropbox_token_expiry';
-const TOKEN_EXPIRY_DAYS = 30; // Token valid for 30 days
+const TOKEN_EXPIRY_DAYS = 15; // Token valid for 15 days
 
 export const initializeClient = async () => {
     // if (client) return client;

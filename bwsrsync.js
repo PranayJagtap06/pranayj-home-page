@@ -63,7 +63,8 @@ class browserSyncManager {
         // const client = this.authManager.getClient();
         try {
             // Try to get account information as a connection test
-            await client.usersGetCurrentAccount();
+            const user = await client.usersGetCurrentAccount();
+            console.log(user)
         } catch (error) {
             if (error.status === 401) {
                 // Token might be expired, try to refresh
@@ -356,14 +357,14 @@ class browserSyncManager {
     normalizeSearchHistory(history) {
         console.log(`Data: ${JSON.stringify(history)}`);
         console.log(`Data type: ${typeof history}`);
-        return history.map(item => ({
+        return history.forEach(item => ({
            term: item.term || item, // Handle both string and object format
             lastSearched: item.lastSearched || Date.now()
        }));
     }
 
     normalizeFavorites(favorites) {
-        return favorites.map(item => ({
+        return favorites.forEach(item => ({
             title: item.title || '',
            favicon: item.favicon || '',
             url: item.url || '',
