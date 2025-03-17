@@ -434,7 +434,7 @@ h3.location {
     max-width: 65%;
     height: auto;
     object-fit: cover;
-    object-position: 100% 0;
+    object-position: 100% 0%;
     aspect-ratio: 1 / 1;
 }
 
