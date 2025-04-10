@@ -687,6 +687,42 @@ document.addEventListener('DOMContentLoaded', async function () {
     // enableTouchReorder();
     updateMostVisited();
 
+    // Add this to your index.js DOMContentLoaded event handler
+    const syncButton = document.getElementById('sync-button');
+    if (syncButton) {
+        syncButton.addEventListener('click', async () => {
+            if (!browserSync.isAuthenticated) {
+                console.log('Initiating authentication via user action...');
+                const success = await browserSync.authenticateWithPopup();
+                if (success) {
+                    console.log('Authentication and sync successful!');
+                    // Optionally update UI to show sync success
+                    syncButton.innerHTML = '<i class="fas fa-check"></i> Synced';
+                    setTimeout(() => {
+                        syncButton.innerHTML = '<i class="fas fa-sync"></i> Sync';
+                    }, 2000);
+                    updateMostVisited(); // Refresh the UI
+                } else {
+                    console.log('Authentication failed');
+                    // Optionally update UI to show sync failure
+                    syncButton.innerHTML = '<i class="fas fa-times"></i> Failed';
+                    setTimeout(() => {
+                        syncButton.innerHTML = '<i class="fas fa-sync"></i> Sync';
+                    }, 2000);
+                }
+            } else {
+                console.log('Already authenticated, syncing...');
+                await browserSync.syncData();
+                // Update UI to show sync success
+                syncButton.innerHTML = '<i class="fas fa-check"></i> Synced';
+                setTimeout(() => {
+                    syncButton.innerHTML = '<i class="fas fa-sync"></i> Sync';
+                }, 2000);
+                updateMostVisited(); // Refresh the UI
+            }
+        });
+    }
+
     // Set up periodic sync if needed
     if (syncInitialized) {
         setInterval(() => browserSync.syncData(), 30000); // Sync every 5 minutes

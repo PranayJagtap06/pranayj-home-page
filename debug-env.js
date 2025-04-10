@@ -15,42 +15,48 @@ const TOKEN_EXPIRY_DAYS = 15; // Token valid for 15 days
 
 export const initializeClient = async () => {
     // if (client) return client;
+    try {
+        const storedAuth = localStorage.getItem(AUTH_STATE_KEY);
+        const tokenExpiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
 
-    const storedAuth = localStorage.getItem(AUTH_STATE_KEY);
-    const tokenExpiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
-
-    if (storedAuth && tokenExpiry) {
-        const expiryDate = new Date(parseInt(tokenExpiry));
-        if (expiryDate > new Date()) {
-            try {
-                const { access_token, refresh_token } = JSON.parse(storedAuth);
-                client = new Dropbox({
-                    accessToken: access_token,
-                    refreshToken: refresh_token,
-                    clientId: config.DROPBOX_API_CONFIG.clientId,
-                    clientSecret: config.DROPBOX_API_CONFIG.clientSecret
-                });
-                return client;
-            } catch (error) {
-                console.warn('Failed to restore client from stored auth:', error);
+        if (storedAuth && tokenExpiry) {
+            const expiryDate = new Date(parseInt(tokenExpiry));
+            if (expiryDate > new Date()) {
+                try {
+                    const { access_token, refresh_token } = JSON.parse(storedAuth);
+                    client = new Dropbox({
+                        accessToken: access_token,
+                        refreshToken: refresh_token,
+                        clientId: config.DROPBOX_API_CONFIG.clientId,
+                        clientSecret: config.DROPBOX_API_CONFIG.clientSecret
+                    });
+                    return client;
+                } catch (error) {
+                    console.warn('Failed to restore client from stored auth:', error);
+                    clearStoredAuth();
+                }
+            } else {
+                console.log('Stored token expired');
                 clearStoredAuth();
             }
-        } else {
-            clearStoredAuth();
         }
-    }
 
-    client = new Dropbox({
-        clientId: config.DROPBOX_API_CONFIG.clientId,
-        clientSecret: config.DROPBOX_API_CONFIG.clientSecret
-    });
-    return client;
+        client = new Dropbox({
+            clientId: config.DROPBOX_API_CONFIG.clientId,
+            clientSecret: config.DROPBOX_API_CONFIG.clientSecret
+        });
+        return client;
+    } catch (err) {
+        console.error("Failed to initialize Dropbox client:", err);
+        return null;
+    }
 };
 
 export const clearStoredAuth = () => {
     localStorage.removeItem(AUTH_STATE_KEY);
     localStorage.removeItem(TOKEN_EXPIRY_KEY);
     client = null;
+    console.log('Cleared stored auth');
 }
 
 function generateRandomString(length) {
@@ -70,6 +76,7 @@ function storeAuthState(access_token, refresh_token) {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + TOKEN_EXPIRY_DAYS);
     localStorage.setItem(TOKEN_EXPIRY_KEY, expiryDate.getTime().toString());
+    console.log('Stored auth state with expiry:', expiryDate);
 }
 
 export const refreshAccessToken = async () => {
@@ -78,10 +85,12 @@ export const refreshAccessToken = async () => {
         if (!storedAuth) throw new Error('No refresh token available');
 
         const { refresh_token } = JSON.parse(storedAuth);
+        console.log('Attempting to refresh token...');
         const response = await client.auth.refreshAccessToken(refresh_token);
         const { access_token: new_access_token, refresh_token: new_refresh_token } = response.result;
 
         storeAuthState(new_access_token, new_refresh_token);
+        console.log('Token refreshed successfully...');
         return true;
     } catch (error) {
         console.error('Failed to refresh token:', error);
@@ -108,12 +117,27 @@ export const authenticate = async () => {
                 return true;
             } else {
                 // Try to refresh the token
+                console.log('Stored token expired, attempting refresh');
                 const refreshed = await refreshAccessToken();
                 if (refreshed) return true;
             }
         }
 
+        return false;
+    } catch (error) {
+        console.error('Failed to initialize authentication:', error);
+        return false;
+    }
+};
+
+// Add a new function to handle the actual popup opening
+export const openAuthPopup = async () => {
+    try {
+        if (!client) {
+            await initializeClient();
+        }
         // If no valid stored auth, proceed with new authentication
+        console.log('Proceeding with new authentication');
         const scopes = [
             "account_info.read",
             "files.metadata.read",
@@ -121,7 +145,8 @@ export const authenticate = async () => {
             "files.content.read"
         ];
 
-        const redirectUri = `${window.location.origin}/auth-callback`;
+        const redirectUri = `${window.location.origin}/auth-callback.html`;
+        console.log('Redirect URI:', redirectUri);
         const authUrl = await client.auth.getAuthenticationUrl(
             redirectUri,
             null,
@@ -132,47 +157,98 @@ export const authenticate = async () => {
             false
         );
 
+        console.log('Authentication URL generated');
+
         return new Promise((resolve) => {
-            window.addEventListener('message', async function handleAuthMessage(event) {
-                if (event.origin !== window.location.origin) return;
+            // Listen for message from auth callback page
+            const messageHandler = function(event) {
+                console.log('Received event:', event.origin, window.location.origin);
+                
+                // Accept messages from our origin or any origin during development
+                if (event.origin !== window.location.origin && event.origin !== '*') {
+                    console.warn('Ignoring message from unknown origin:', event.origin);
+                    return;
+                }
 
                 try {
-                    const { code } = event.data;
+                    console.log('Processing auth message:', event.data);
+                    const { code, error } = event.data;
+                    
+                    if (error) {
+                        console.error('Auth error received:', error);
+                        window.removeEventListener('message', messageHandler);
+                        resolve(false);
+                        return;
+                    }
+                    
                     if (code) {
-                        client.auth.setClientSecret(config.DROPBOX_API_CONFIG.clientSecret);
-                        const tokenResponse = await client.auth.getAccessTokenFromCode(
-                            `${window.location.origin}/auth-callback`,
-                            code
-                        );
+                        // Process the authentication code
+                        (async () => {
+                            try {
+                                console.log('Setting client secret and getting token');
+                                client.auth.setClientSecret(config.DROPBOX_API_CONFIG.clientSecret);
+                                const tokenResponse = await client.auth.getAccessTokenFromCode(
+                                    redirectUri,
+                                    code
+                                );
 
-                        const { access_token, refresh_token } = tokenResponse.result;
+                                const { access_token, refresh_token } = tokenResponse.result;
+                                console.log('Received tokens from Dropbox');
 
-                        // Store the authentication state
-                        storeAuthState(access_token, refresh_token);
+                                // Store the authentication state
+                                storeAuthState(access_token, refresh_token);
 
-                        client = new Dropbox({
-                            accessToken: access_token,
-                            refreshToken: refresh_token,
-                            clientId: config.DROPBOX_API_CONFIG.clientId,
-                            clientSecret: config.DROPBOX_API_CONFIG.clientSecret
-                        });
+                                // Recreate client with the token
+                                client = new Dropbox({
+                                    accessToken: access_token,
+                                    refreshToken: refresh_token,
+                                    clientId: config.DROPBOX_API_CONFIG.clientId,
+                                    clientSecret: config.DROPBOX_API_CONFIG.clientSecret
+                                });
 
-                        console.log('Successfully authenticated with Dropbox!');
-                        window.removeEventListener('message', handleAuthMessage);
-                        resolve(true);
+                                console.log('Successfully authenticated with Dropbox!');
+                                window.removeEventListener('message', messageHandler);
+                                resolve(true);
+                            } catch (err) {
+                                console.error('Error exchanging code for token:', err);
+                                window.removeEventListener('message', messageHandler);
+                                resolve(false);
+                            }
+                        })();
                     } else {
-                        console.error('Failed to retrieve code from URL');
-                        window.removeEventListener('message', handleAuthMessage);
+                        console.error('No code or error in message');
+                        window.removeEventListener('message', messageHandler);
                         resolve(false);
                     }
-                } catch (error) {
-                    console.error('Failed to retrieve access token from Dropbox:', error);
-                    window.removeEventListener('message', handleAuthMessage);
+                } catch (err) {
+                    console.error('Error processing auth message:', err);
+                    window.removeEventListener('message', messageHandler);
                     resolve(false);
                 }
-            }, { once: true });
-
-            window.open(authUrl, '_blank');
+            };
+            
+            // Add event listener before opening popup
+            window.addEventListener('message', messageHandler);
+            
+            // Open the auth popup
+            console.log('Opening auth popup');
+            const popup = window.open(authUrl, 'DropboxAuth', 
+                'width=800,height=600,menubar=no,toolbar=no,location=no,status=no');
+                
+            if (!popup || popup.closed) {
+                console.error('Popup blocked or failed to open');
+                window.removeEventListener('message', messageHandler);
+                resolve(false);
+            }
+            
+            // Also set a timeout in case the popup is closed without sending a message
+            setTimeout(() => {
+                if (popup && !popup.closed) {
+                    console.log('Authentication timed out');
+                    window.removeEventListener('message', messageHandler);
+                    resolve(false);
+                }
+            }, 120000); // 2 minute timeout
         });
     } catch (error) {
         console.error('Dropbox authentication failed:', error);

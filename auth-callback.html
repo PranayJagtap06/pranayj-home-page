@@ -20,7 +20,9 @@
 </body>
 </html> -->
 
-<!DOCTYPE html>
+
+
+<!-- <!DOCTYPE html>
 <html>
 <head>
     <title>Authentication Callback</title>
@@ -35,5 +37,70 @@
 </head>
 <body>
     <p>Completing authentication...</p>
+</body>
+</html> -->
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dropbox Auth Callback</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .message {
+            margin: 20px;
+            padding: 20px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="message">Processing authentication...</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const code = params.get('code');
+                const error = params.get('error');
+                
+                if (error) {
+                    console.error('Dropbox auth error:', error);
+                    document.querySelector('.message').textContent = 'Authentication failed: ' + (params.get('error_description') || error);
+                    
+                    if (window.opener) {
+                        window.opener.postMessage({ error: error }, '*');
+                        console.log('Posted error to opener');
+                    }
+                } else if (code) {
+                    console.log('Auth code received');
+                    document.querySelector('.message').textContent = 'Authentication successful! You can close this window.';
+                    
+                    // Send message and wait to ensure delivery
+                    if (window.opener) {
+                        window.opener.postMessage({ code: code }, '*');
+                        console.log('Posted code to opener');
+                        
+                        // Close window after a short delay to ensure message delivery
+                        setTimeout(() => {
+                            window.close();
+                        }, 1000);
+                    } else {
+                        document.querySelector('.message').textContent = 'Authentication successful, but unable to communicate with the parent window.';
+                    }
+                } else {
+                    document.querySelector('.message').textContent = 'Invalid authentication response.';
+                }
+            } catch (e) {
+                console.error('Error in auth callback:', e);
+                document.querySelector('.message').textContent = 'An error occurred during authentication.';
+            }
+        });
+    </script>
 </body>
 </html>
