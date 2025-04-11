@@ -64,7 +64,7 @@ class browserSyncManager {
         const authSuccess = await openAuthPopup();
         if (authSuccess) {
             this.isAuthenticated = true;
-            await this.syncData();
+            // await this.syncData();
             return true;
         }
         return false;

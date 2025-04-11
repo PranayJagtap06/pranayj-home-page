@@ -88,7 +88,7 @@ class SearchSuggestionsManager {
                         suggestion =>
                             !recentMatches.some(recent => recent.text === suggestion.text)
                     )
-                ].slice(0, 30); // Limit to 30 suggestions
+                ].slice(0, 50); // Limit to 30 suggestions
 
                 // Show suggestions if we have any
                 if (this.suggestions.length > 0) {
@@ -335,17 +335,17 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Initialize BrowserSyncManager
     browserSync = new browserSyncManager();
     let syncInitialized = false;
-    // try {
-    //     if (await browserSync.initialize()) {
-    //         syncInitialized = true;
-    //     } else {
-    //         syncInitialized = true;
-    //         console.log("Failed to initialize sync")
-    //     }
-    // } catch (error) {
-    //     console.warn('Failed to initialize sync:', error);
-    //     // Continue without sync functionality
-    // }
+    try {
+        if (await browserSync.initialize()) {
+            syncInitialized = true;
+        } else {
+            syncInitialized = true;
+            console.log("Failed to initialize sync")
+        }
+    } catch (error) {
+        console.warn('Failed to initialize sync:', error);
+        // Continue without sync functionality
+    }
     const searchBar = document.querySelector('.search-bar');
     const searchEngines = document.querySelector('.search-engines');
     const searchEngineFavicon = document.querySelector('.search-engine-favicon');
