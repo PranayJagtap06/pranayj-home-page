@@ -442,7 +442,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         <button class="site-action-btn remove-site" title="Remove">❌</button>
                     </div>
                 </div>
-                <div class="site-title">${site.title}</div>
+                <div class="site-title"><p>${site.title}</p></div>
             </div>
         `).join('');
 

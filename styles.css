@@ -271,6 +271,12 @@ a {
     text-wrap-mode: nowrap;
 }
 
+.site-title p {
+    margin: 0;
+    padding: 5px 0;
+    font-size: smaller;
+}
+
 .site-item {
     position: relative;
     width: 50px;
