@@ -40,7 +40,7 @@ class browserSyncManager {
                 try {
                     await this.testConnection(this.dbx);
                     console.log('Dropbox connection verified');
-                    await this.syncData();
+                    // await this.syncData();
                     return true;
                 } catch (error) {
                     console.error('Failed to verify Dropbox connection:', error);
