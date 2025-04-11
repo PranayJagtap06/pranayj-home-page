@@ -25,12 +25,12 @@ class SearchSuggestionsManager {
         try {
             // Load from local storage first
             this.recentSearches = this.loadRecentSearches();
-            if (this.syncManager && this.syncManager.isAuthenticated) {
-                // Wait for initial sync from dropbox if auth successfull
-                await this.syncManager.syncData();
-                // Update from synced history
-                this.recentSearches = this.loadRecentSearches();
-            }
+            // if (this.syncManager && this.syncManager.isAuthenticated) {
+            //     // Wait for initial sync from dropbox if auth successfull
+            //     await this.syncManager.syncData();
+            //     // Update from synced history
+            //     this.recentSearches = this.loadRecentSearches();
+            // }
         } catch (error) {
             console.warn('Failed to initialize synced data:', error);
         }
@@ -45,7 +45,12 @@ class SearchSuggestionsManager {
 
     // Load recent searches from localStorage
     loadRecentSearches() {
-        this.recentSearches = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+        try {
+            return JSON.parse(localStorage.getItem('searchHistory') || '[]');
+        } catch (error) {
+            console.error('Error loading search history:', error);
+            return [];
+        }
     }
 
     saveLocalSearch(query) {
@@ -93,9 +98,18 @@ class SearchSuggestionsManager {
                 }
             } catch (error) {
                 console.error('Suggestions error:', error);
-                this.suggestions = this.getFallbackSuggestions(query);
-                // this.showSuggestions();
-                this.hideSuggestions();
+                // Ensure we handle potential undefined values
+                try {
+                    this.suggestions = this.getFallbackSuggestions(query);
+                    if (this.suggestions && this.suggestions.length > 0) {
+                        this.showSuggestions();
+                    } else {
+                        this.hideSuggestions();
+                    }
+                } catch (fallbackError) {
+                    console.error('Fallback suggestions error:', fallbackError);
+                    this.hideSuggestions();
+                }
             }
         }, 300);
     }
@@ -136,8 +150,8 @@ class SearchSuggestionsManager {
             //     throw new Error(suggestions.error);
             // }
 
-            if (!suggestions || suggestions.length === 0) {
-                console.warn('No suggestions returned');
+            if (!suggestions || !Array.isArray(suggestions) || suggestions.length === 0) {
+                console.warn('No suggestions returned or invalid format');
                 return this.getFallbackSuggestions(query);
             }
 
@@ -145,10 +159,10 @@ class SearchSuggestionsManager {
 
             // Ensure that each suggestion has a 'text' property
             return suggestions.map(suggestion => ({
-                text: suggestion.text || '', // Set a default value if 'text' is missing
+                text: (suggestion && suggestion.text) || suggestion || '', // Set a default value if 'text' is missing
                 type: 'suggestion',
                 icon: '🔍'
-            }));
+            })).filter(s => s.text);
 
         } catch (error) {
             console.error('Failed to fetch suggestions:', error);
@@ -245,9 +259,9 @@ class SearchSuggestionsManager {
             try {
                 this.saveLocalSearch(query);
                 // sync with dropbox
-                if (this.syncManager && this.syncManager.isAuthenticated) {
-                    this.syncManager.syncSearchHistory();
-                }
+                // if (this.syncManager && this.syncManager.isAuthenticated) {
+                //     this.syncManager.syncSearchHistory();
+                // }
             } catch (error) {
                 console.error('Failed to save recent search:', error);
             }
@@ -274,9 +288,9 @@ class SearchSuggestionsManager {
             this.suggestions.splice(index, 1);
             this.showSuggestions();
             // sync with dropbox
-            if (this.syncManager && this.syncManager.isAuthenticated) {
-                this.syncManager.syncSearchHistory();
-            }
+            // if (this.syncManager && this.syncManager.isAuthenticated) {
+            //     this.syncManager.syncSearchHistory();
+            // }
         }
     }
 
@@ -321,17 +335,17 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Initialize BrowserSyncManager
     browserSync = new browserSyncManager();
     let syncInitialized = false;
-    try {
-        if (await browserSync.initialize()) {
-            syncInitialized = true;
-        } else {
-            syncInitialized = true;
-            console.log("Failed to initialize sync")
-        }
-    } catch (error) {
-        console.warn('Failed to initialize sync:', error);
-        // Continue without sync functionality
-    }
+    // try {
+    //     if (await browserSync.initialize()) {
+    //         syncInitialized = true;
+    //     } else {
+    //         syncInitialized = true;
+    //         console.log("Failed to initialize sync")
+    //     }
+    // } catch (error) {
+    //     console.warn('Failed to initialize sync:', error);
+    //     // Continue without sync functionality
+    // }
     const searchBar = document.querySelector('.search-bar');
     const searchEngines = document.querySelector('.search-engines');
     const searchEngineFavicon = document.querySelector('.search-engine-favicon');
@@ -463,9 +477,9 @@ document.addEventListener('DOMContentLoaded', async function () {
             localStorage.setItem('mostVisited', JSON.stringify(sitesLocal));
             console.log('Favorite sites removed successfully');
             // sync with dropbox
-            if (syncInitialized) {
-                await browserSync.syncFavorites();
-            }
+            // if (syncInitialized) {
+            //     await browserSync.syncFavorites();
+            // }
         } catch (error) {
             console.error('Failed to remove site:', error);
         }
@@ -613,31 +627,125 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     async function addNewSite() {
-        const url = prompt('Enter the website URL:');
-        if (url) {
+        const input = prompt('Enter the website URL and title (separated by a comma):');
+        if (input) {
             try {
-                const siteDomain = new URL(url).hostname;
+                const [url, title] = input.split(',');
+                const trimmedUrl = url.trim();
+                const siteDomain = new URL(trimmedUrl).hostname;
                 const newSite = {
-                    title: siteDomain.replace(/^www\./, ''),
-                    favicon: `https://${siteDomain}/favicon.ico`,
-                    url: url,
+                    title: title.trim(),
+                    favicon: '',
+                    url: trimmedUrl,
                     pinned: false,
                     lastModified: Date.now()
                 };
 
+                // Enhanced favicon extraction
+                try {
+                    // Use a CORS proxy
+                    const proxyUrl = 'https://api.allorigins.win/raw?url=';
+
+                    // First try to fetch the website's HTML
+                    const pageResponse = await fetch(proxyUrl + encodeURIComponent(trimmedUrl));
+                    if (pageResponse.ok) {
+                        const html = await pageResponse.text();
+
+                        // Look for various favicon patterns in HTML
+                        const iconPatterns = [
+                            /<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i,
+                            /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:shortcut )?icon["']/i,
+                            /<link[^>]*rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i,
+                            /<link[^>]*href=["']([^"']+)["'][^>]*rel=["']apple-touch-icon["']/i,
+                            /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i
+                        ];
+
+                        let faviconPath = null;
+                        for (const pattern of iconPatterns) {
+                            const match = pattern.exec(html);
+                            if (match && match[1]) {
+                                faviconPath = match[1];
+                                break;
+                            }
+                        }
+
+                        if (faviconPath) {
+                            // Handle relative URLs
+                            let absoluteFaviconUrl;
+                            if (faviconPath.startsWith('http')) {
+                                absoluteFaviconUrl = faviconPath;
+                            } else if (faviconPath.startsWith('//')) {
+                                absoluteFaviconUrl = 'https:' + faviconPath;
+                            } else if (faviconPath.startsWith('/')) {
+                                absoluteFaviconUrl = `https://${siteDomain}${faviconPath}`;
+                            } else {
+                                absoluteFaviconUrl = `https://${siteDomain}/${faviconPath}`;
+                            }
+
+                            // Try to fetch the favicon
+                            try {
+                                const faviconResponse = await fetch(proxyUrl + encodeURIComponent(absoluteFaviconUrl));
+                                if (faviconResponse.ok) {
+                                    const faviconBlob = await faviconResponse.blob();
+                                    // Convert blob to base64 data URL for persistent storage
+                                    newSite.favicon = await blobToDataUrl(faviconBlob);
+                                }
+                            } catch (faviconError) {
+                                console.warn('Failed to fetch favicon:', faviconError);
+                            }
+                        }
+                    }
+
+                    // Fallback to standard favicon.ico if we still don't have a favicon
+                    if (!newSite.favicon) {
+                        const standardFaviconUrl = `https://${siteDomain}/favicon.ico`;
+                        try {
+                            const faviconResponse = await fetch(proxyUrl + encodeURIComponent(standardFaviconUrl));
+                            if (faviconResponse.ok) {
+                                const faviconBlob = await faviconResponse.blob();
+                                // Convert blob to base64 data URL for persistent storage
+                                newSite.favicon = await blobToDataUrl(faviconBlob);
+                            }
+                        } catch (stdFaviconError) {
+                            console.warn('Failed to fetch standard favicon:', stdFaviconError);
+                        }
+                    }
+
+                    // Last resort: use a service like Google's favicon service
+                    if (!newSite.favicon) {
+                        // Store the Google favicon service URL directly
+                        newSite.favicon = `https://www.google.com/s2/favicons?domain=${siteDomain}&sz=64`;
+                    }
+                } catch (faviconError) {
+                    console.warn('All favicon extraction methods failed:', faviconError);
+                    // Use Google's favicon service as final fallback
+                    newSite.favicon = `https://www.google.com/s2/favicons?domain=${siteDomain}&sz=64`;
+                }
+
                 const currentSites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
                 currentSites.push(newSite);
                 localStorage.setItem('mostVisited', JSON.stringify(currentSites));
+
                 // sync with dropbox
-                if (syncInitialized) {
-                    await browserSync.syncFavorites();
-                }
+                // if (syncInitialized) {
+                //     await browserSync.syncFavorites();
+                // }
                 updateMostVisited();
             } catch (error) {
                 console.error('Failed to add new site:', error);
-                alert('Please enter a valid URL');
+                alert('Please enter a valid URL and title');
             }
         }
+    }
+
+    // Helper function to convert a Blob to a data URL
+    function blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
     }
 
     async function updateSiteOrder() {
@@ -647,9 +755,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         ).filter(Boolean);
         localStorage.setItem('mostVisited', JSON.stringify(newOrder));
         // sync with dropbox
-        if (syncInitialized) {
-            await browserSync.syncFavorites();
-        }
+        // if (syncInitialized) {
+        //     await browserSync.syncFavorites();
+        // }
         updateMostVisited();
 
     }
@@ -724,9 +832,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // Set up periodic sync if needed
-    if (syncInitialized) {
-        setInterval(() => browserSync.syncData(), 30000); // Sync every 5 minutes
-    }
+    // if (syncInitialized) {
+    //     setInterval(() => browserSync.syncData(), 30000); // Sync every 5 minutes
+    // }
 
 });
 

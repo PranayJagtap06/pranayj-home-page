@@ -1,9 +1,14 @@
 [build]
-  functions = "functions"
+  functions = "./functions"
   command = """
     npm run build:prod
   """
   publish = "dist"
+
+[[redirects]]
+  from = "/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
 
 [context.production]
   environment = { NODE_VERSION = "23.3.0" }
