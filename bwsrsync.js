@@ -477,7 +477,7 @@ class browserSyncManager {
                         autorename: true,
                         mute: false
                     });
-                    console.log('File uploaded successfully');
+                    console.log('File uploaded successfully', path);
                     const data = JSON.parse(await response.fileBlob);
 
                     // Update cache
@@ -492,19 +492,20 @@ class browserSyncManager {
             }
 
             const response = await this.dbx.filesDownload({ path });
-            console.log('File downloaded successfully');
-            const blob = await response.fileBlob;
+            const blob = await response.result?.fileBlob;
+            const jsonData = await JSON.parse(blob.text());
             // const data = await blob.JSON();
             // const data = JSON.parse(text);
-            console.log(`file ${path}: ${blob}`);
+            console.log(`file ${path}: ${jsonData}`);
 
             // Update cache
             this.localCache.set(path, {
-                blob,
+                jsonData,
                 timestamp: Date.now()
             });
 
-            return blob;
+            console.log('File downloaded & parsed successfully', path);
+            return jsonData;
         } catch (error) {
             console.error(`Failed to read file ${path}:`, error);
             // Check if it's an authentication error
