@@ -508,13 +508,13 @@ class browserSyncManager {
                 }
             } else {
                 const text = blob.text();
-                console.log(`Raw text received for ${path} (first 50 chars):`, text);
+                console.log(`Raw text received for ${path}:`, text);
 
                 try{
                     parsedData = JSON.parse(text);
                 } catch (parseError) {
                     console.error(`Failed to parse JSON from ${path}:`, parseError);
-                    console.error(`Raw text that failed parsing (first 200 chars):`, text.substring(0, 200));
+                    console.error(`Raw text that failed parsing:`, text);
                     // Decide how to handle parse errors. Return cache? Return null? Throw?
                     // Returning cache seems reasonable here.
                     console.log(`Returning cached data for ${path} due to parse error.`);
