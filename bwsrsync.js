@@ -468,7 +468,7 @@ class browserSyncManager {
             console.log('Attempting to read file:', path);
             let response;
 
-            try{
+            try {
                 response = await this.dbx.filesDownload({ path });
                 console.log(`File ${path} exists and download initiated.`);
             } catch (downloadError) {
@@ -478,7 +478,7 @@ class browserSyncManager {
                     await this.dbx.filesUpload({
                         path,
                         contents: JSON.stringify([]),
-                        mode: {'.tag': 'add'},
+                        mode: { '.tag': 'add' },
                         autorename: false,
                         mute: false
                     });
@@ -507,13 +507,13 @@ class browserSyncManager {
                     console.warn(`File ${path} downloaded but is empty. Returning empty array.`);
                     parsedData = []; // Treat empty file as empty array
                 } else {
-                throw new Error(`Downloaded file content (Blob) could not be retrieved for ${path}. Response status: ${response?.status}`);
+                    throw new Error(`Downloaded file content (Blob) could not be retrieved for ${path}. Response status: ${response?.status}`);
                 }
             } else {
                 const text = await blob.text();
                 console.log(`Raw text received for ${path}:`, text);
 
-                try{
+                try {
                     parsedData = JSON.parse(text);
                 } catch (parseError) {
                     console.error(`Failed to parse JSON from ${path}:`, parseError);
@@ -704,12 +704,23 @@ class browserSyncManager {
     }
 
     normalizeSearchHistory(history) {
-        console.log(`Data: ${JSON.stringify(history)}`);
-        console.log(`Data type: ${typeof history}`);
-        return history.forEach(item => ({
-            term: item.term || item, // Handle both string and object format
-            lastSearched: item.lastSearched || Date.now()
-        }));
+        // Ensure input is an array
+        if (!Array.isArray(history)) {
+            console.warn('normalizeSearchHistory received non-array input:', history);
+            return [];
+        }
+        // Use map to return a new array
+        return history.map(item => {
+            // Handle both object {term: ..., lastSearched: ...} and simple string format
+            const term = typeof item === 'string' ? item : item?.term;
+            const lastSearched = item?.lastSearched || Date.now(); // Use existing or set current time
+
+            // Return the standardized object, ensuring term is a string
+            return {
+                term: String(term || ''), // Ensure term is a string, default to empty
+                lastSearched: lastSearched
+            };
+        }).filter(item => item.term); // Filter out entries with empty terms after normalization
     }
 
     normalizeFavorites(favorites) {
@@ -724,25 +735,30 @@ class browserSyncManager {
     }
 
     mergeSearchHistory(local, remote) {
-        // const normalizedLocal = this.normalizeSearchHistory(local);
-        // const normalizedRemote = this.normalizeSearchHistory(remote);
+        const normalizedLocal = this.normalizeSearchHistory(local);
+        const normalizedRemote = this.normalizeSearchHistory(remote);
 
         const merged = new Map();
 
         // Process local entries
-        local.forEach(item => {
+        normalizedLocal.forEach(item => {
             merged.set(item.term, item);
         });
 
-        // Merge remote entries
-        remote.forEach(item => {
+        // Merge remote entries, overwriting if newer
+        normalizedRemote.forEach(item => {
             const existingItem = merged.get(item.term);
-            if (!existingItem || item.lastSearched > existingItem.lastSearched) {
+            // Ensure lastSearched is treated as a number for comparison
+            const itemLastSearched = Number(item.lastSearched || 0);
+            const existingLastSearched = Number(existingItem?.lastSearched || 0);
+
+            if (!existingItem || itemLastSearched > existingLastSearched) {
                 merged.set(item.term, item);
             }
         });
 
-        return Array.from(merged.values()).sort((a, b) => b.lastSearched - a.lastSearched);
+        return Array.from(merged.values())
+            .sort((a, b) => Number(b.lastSearched || 0) - Number(a.lastSearched || 0));
     }
 
     mergeFavorites(local, remote) {
@@ -782,12 +798,20 @@ class browserSyncManager {
 
             const remoteData = await this.readFile(this.filePaths.history);
 
-            const mergedData = this.mergeSearchHistory(localData, remoteData);
+            // Ensure remoteData is an array, default to empty if not (readFile should handle this)
+            const remoteDataObjects = Array.isArray(remoteData) ? remoteData : [];
+
+            const mergedData = this.mergeSearchHistory(localData, remoteDataObjects);
             await this.writeFile(this.filePaths.history, mergedData);
+
+            // Filter out any items where term might have become null or empty somehow during merging/normalization
+            const termsToSave = mergedData
+            .map(item => item?.term) // Get the term
+            .filter(term => term);   // Keep only non-empty, non-null terms
 
             // Update local storage
             localStorage.setItem('searchHistory',
-                JSON.stringify(mergedData.map(item => item.term)));
+                JSON.stringify(termsToSave));
 
             return mergedData;
         } catch (error) {
