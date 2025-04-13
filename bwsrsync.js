@@ -455,9 +455,12 @@ class browserSyncManager {
 
     async readFile(path) {
         let parsedData = null;
+        const cachedItem = this.localCache.get(path);
+
         if (!this.isAuthenticated) {
             console.log('Not authenticated, returning null for path:', path);
-            return null;
+            // return null;
+            return cachedItem?.data || null;
         }
 
         try {
@@ -546,7 +549,7 @@ class browserSyncManager {
                     this.isAuthenticated = false; // Mark as unauthenticated
                 }
             }
-            return this.localCache.get(path)?.data || null;
+            return cachedItem?.data || null;
         }
     }
 
