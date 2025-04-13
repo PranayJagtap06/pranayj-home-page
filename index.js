@@ -52,7 +52,7 @@ class SearchSuggestionsManager {
             return [];
         }
     }
-
+    
     saveLocalSearch(query) {
         if (!query) return;
         this.recentSearches = [
@@ -88,7 +88,7 @@ class SearchSuggestionsManager {
                         suggestion =>
                             !recentMatches.some(recent => recent.text === suggestion.text)
                     )
-                ].slice(0, 50); // Limit to 30 suggestions
+                ].slice(0); // Limit to 30 suggestions
 
                 // Show suggestions if we have any
                 if (this.suggestions.length > 0) {

@@ -37,6 +37,7 @@ module.exports = {
       "util": require.resolve("util/"),
       "dropbox": require.resolve("dropbox"),
       "buffer": require.resolve('buffer/'),
+      "file-saver": require.resolve('file-saver'),
       // "http": require.resolve('stream-http'),
       "url": require.resolve('url/'),
       "process": require.resolve('process/browser'),

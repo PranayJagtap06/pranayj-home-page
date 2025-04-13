@@ -1,4 +1,6 @@
 {
+	"main": "nd-main.js",
+	"type": "module",
 	"scripts": {
 		"create-env": "mkdir -p public && cp window-env.js.template public/window-env.js",
 		"build:prod": "webpack --mode production",
@@ -15,6 +17,7 @@
 		"dotenv": "^16.4.7",
 		"dotenv-webpack": "^8.1.0",
 		"dropbox": "^10.34.0",
+		"file-saver": "^2.0.5",
 		"netlify-cli": "^18.0.0",
 		"os-browserify": "^0.3.0",
 		"path-browserify": "^1.0.1",
@@ -25,7 +28,8 @@
 		"util": "^0.12.5",
 		"vm-browserify": "^1.1.2",
 		"webpack": "^5.97.1",
-		"webpack-cli": "^6.0.1"
+		"webpack-cli": "^6.0.1",
+		"node-fetch": "^3.3.2"
 	},
 	"devDependencies": {
 		"@babel/preset-env": "^7.26.0",
