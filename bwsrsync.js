@@ -460,7 +460,7 @@ class browserSyncManager {
         if (!this.isAuthenticated) {
             console.log('Not authenticated, returning null for path:', path);
             // return null;
-            return cachedItem?.data || null;
+            return cachedItem?.data || [];
         }
 
         try {
@@ -521,7 +521,7 @@ class browserSyncManager {
                     // Decide how to handle parse errors. Return cache? Return null? Throw?
                     // Returning cache seems reasonable here.
                     console.log(`Returning cached data for ${path} due to parse error.`);
-                    return cachedItem?.data || null; // Use consistent 'data' key for cache
+                    return cachedItem?.data || []; // Use consistent 'data' key for cache
                 }
             }
             console.log(`File ${path} downloaded & parsed successfully.`);
@@ -549,7 +549,7 @@ class browserSyncManager {
                     this.isAuthenticated = false; // Mark as unauthenticated
                 }
             }
-            return cachedItem?.data || null;
+            return cachedItem?.data || [];
         }
     }
 
