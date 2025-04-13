@@ -508,7 +508,7 @@ class browserSyncManager {
                 }
             } else {
                 const text = blob.text();
-                console.log(`Raw text received for ${path} (first 50 chars):`, text.substring(0, 50));
+                console.log(`Raw text received for ${path} (first 50 chars):`, text);
 
                 try{
                     parsedData = JSON.parse(text);
