@@ -1,6 +1,4 @@
 {
-	"main": "nd-main.js",
-	"type": "module",
 	"scripts": {
 		"create-env": "mkdir -p public && cp window-env.js.template public/window-env.js",
 		"build:prod": "webpack --mode production",
