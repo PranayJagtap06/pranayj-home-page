@@ -510,7 +510,7 @@ class browserSyncManager {
                 throw new Error(`Downloaded file content (Blob) could not be retrieved for ${path}. Response status: ${response?.status}`);
                 }
             } else {
-                const text = blob.text();
+                const text = await blob.text();
                 console.log(`Raw text received for ${path}:`, text);
 
                 try{
