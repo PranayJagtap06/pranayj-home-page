@@ -1,4 +1,5 @@
 // browserSyncManager.js
+import { resolve } from 'url';
 import { initializeClient, authenticate, clearStoredAuth, refreshAccessToken, openAuthPopup } from './debug-env.js';
 
 class browserSyncManager {
@@ -453,59 +454,82 @@ class browserSyncManager {
     }
 
     async readFile(path) {
+        let parsedData = null;
         if (!this.isAuthenticated) {
             console.log('Not authenticated, returning null for path:', path);
             return null;
         }
 
         try {
-            // const client = this.authManager.getClient();
-            const client = this.dbx;
+            // const client = this.dbx;
             console.log('Attempting to read file:', path);
+            let response;
 
-            // First check if the file exists
-            try {
-                await this.dbx.filesGetMetadata({ path });
-            } catch (error) {
-                if (error.status === 409) {
-                    console.log('File does not exist, creating empty file:', path);
+            try{
+                response = await this.dbx.filesDownload({ path });
+                console.log(`File ${path} exists and download initiated.`);
+            } catch (downloadError) {
+                if (downloadError.status === 409) {
+                    console.log(`File ${path} does not exist, creating empty file...`);
                     // Create empty file
-                    const response = await this.dbx.filesUpload({
+                    await this.dbx.filesUpload({
                         path,
                         contents: JSON.stringify([]),
-                        mode: 'add',
-                        autorename: true,
+                        mode: {'.tag': 'add'},
+                        autorename: false,
                         mute: false
                     });
-                    console.log('File uploaded successfully', path);
-                    const data = JSON.parse(await response.fileBlob);
+
+                    console.log(`Empty file ${path} uploaded successfully...`);
+
+                    parsedData = [];
 
                     // Update cache
                     this.localCache.set(path, {
-                        data,
+                        data: parsedData,
                         timestamp: Date.now()
                     });
-                    return [];
+                    return parsedData;
+                } else {
+                    throw downloadError;
                 }
-                // throw error;
-                console.error(`Failed to get file metadata ${path}:`, error);
             }
 
-            const response = await this.dbx.filesDownload({ path });
+            // const response = await this.dbx.filesDownload({ path });
             const blob = await response.result?.fileBlob;
-            const jsonData = await JSON.parse(blob.text());
-            // const data = await blob.JSON();
-            // const data = JSON.parse(text);
-            console.log(`file ${path}: ${jsonData}`);
 
-            // Update cache
+            if (!blob) {
+                // Handle cases where download response is okay but blob is missing
+                if (response?.result?.size === 0) {
+                    console.warn(`File ${path} downloaded but is empty. Returning empty array.`);
+                    parsedData = []; // Treat empty file as empty array
+                } else {
+                throw new Error(`Downloaded file content (Blob) could not be retrieved for ${path}. Response status: ${response?.status}`);
+                }
+            } else {
+                const text = blob.text();
+                console.log(`Raw text received for ${path} (first 50 chars):`, text.substring(0, 50));
+
+                try{
+                    parsedData = JSON.parse(text);
+                } catch (parseError) {
+                    console.error(`Failed to parse JSON from ${path}:`, parseError);
+                    console.error(`Raw text that failed parsing (first 200 chars):`, text.substring(0, 200));
+                    // Decide how to handle parse errors. Return cache? Return null? Throw?
+                    // Returning cache seems reasonable here.
+                    console.log(`Returning cached data for ${path} due to parse error.`);
+                    return cachedItem?.data || null; // Use consistent 'data' key for cache
+                }
+            }
+            console.log(`File ${path} downloaded & parsed successfully.`);
+
+            // Update cache with successfully parsed data
             this.localCache.set(path, {
-                jsonData,
+                data: parsedData, // Use the consistent variable name and cache key
                 timestamp: Date.now()
             });
 
-            console.log('File downloaded & parsed successfully', path);
-            return jsonData;
+            return parsedData;
         } catch (error) {
             console.error(`Failed to read file ${path}:`, error);
             // Check if it's an authentication error
@@ -513,8 +537,13 @@ class browserSyncManager {
                 console.log('Authentication error, attempting to refresh token...');
                 const refreshed = await refreshAccessToken();
                 if (refreshed) {
+                    console.log('Token refreshed, retrying readFile...');
                     // Retry the operation
                     return this.readFile(path);
+                } else {
+                    console.error('Token refresh failed.');
+                    // If refresh fails, don't retry. Fall through to return cache.
+                    this.isAuthenticated = false; // Mark as unauthenticated
                 }
             }
             return this.localCache.get(path)?.data || null;
