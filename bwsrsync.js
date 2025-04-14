@@ -706,6 +706,9 @@ class browserSyncManager {
     }
 
     async syncData() {
+        this.schhist_remove_status = this.readFile(this.filePaths.schhist_remove_status, {'status': false});
+        this.fav_remove_status = this.readFile(this.filePaths.fav_remove_status, {'status': false});
+
         if (this.syncInProgress) return;
         this.syncInProgress = true;
 
@@ -1003,8 +1006,6 @@ class browserSyncManager {
      * @returns {Array<object>} The merged and sorted favorites array.
      */
     async syncSearchHistory(remove = false) {
-        this.schhist_remove_status = this.readFile(this.filePaths.schhist_remove_status, {'status': false});
-
         try {
             const localData = JSON.parse(localStorage.getItem('searchHistory') || '[]')
             // .map(term => ({ term, lastSearched: Date.now() }));
@@ -1046,8 +1047,6 @@ class browserSyncManager {
      * @returns {Array<object>} The merged and sorted favorites array.
      */
     async syncFavorites(remove = false) {
-        this.fav_remove_status = this.readFile(this.filePaths.fav_remove_status, {'status': false});
-
         try {
             const localData = JSON.parse(localStorage.getItem('mostVisited') || '[]');
             const remoteData = await this.readFile(this.filePaths.favorites, []);
