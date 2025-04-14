@@ -1,4 +1,5 @@
 // browserSyncManager.js
+import { resolve } from 'url';
 import { initializeClient, authenticate, clearStoredAuth, refreshAccessToken, openAuthPopup } from './debug-env.js';
 
 class browserSyncManager {
