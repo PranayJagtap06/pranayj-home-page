@@ -15,10 +15,10 @@ class browserSyncManager {
 
         // File paths in Dropbox - update with app folder path
         this.filePaths = {
-            history: '/sync_data/search_history.json',
-            favorites: '/sync_data/favorites.json',
-            fav_remove_status: '/sync_data/fav_remove_status.json',
-            schhist_remove_status: '/sync_data/schhist_remove_status.json'
+            history: '/search_history.json',
+            favorites: '/favorites.json',
+            fav_remove_status: '/fav_remove_status.json',
+            schhist_remove_status: '/schhist_remove_status.json'
         };
 
         // Initialize offline handling
@@ -46,7 +46,7 @@ class browserSyncManager {
                     console.log('Dropbox connection verified');
 
                     // Ensure sync directory exists
-                    await this.ensureSyncDirectory();
+                    // await this.ensureSyncDirectory();
 
                     // Initialize remove status flags
                     this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status, {'status': false}) || {'status': false};
@@ -837,7 +837,7 @@ class browserSyncManager {
             });
             // The 'merged' map now contains only remote items that are also present locally.
 
-            await this.writeFile(this.filePaths.schhist_remove_status, {'status': false});
+            this.writeFile(this.filePaths.schhist_remove_status, {'status': false});
 
         } else if (remove) {
             // --- Intersection Logic (Keep Local if in Both) ---
@@ -942,7 +942,7 @@ class browserSyncManager {
             });
             // The 'merged' map now contains only remote items whose URLs are also present locally.
 
-            await this.writeFile(this.filePaths.fav_remove_status, {'status': true});
+            this.writeFile(this.filePaths.fav_remove_status, {'status': false});
 
         } else if (remove) {
             // --- Intersection Logic (Keep Local if in Both) ---
