@@ -723,75 +723,224 @@ class browserSyncManager {
         }).filter(item => item.term); // Filter out entries with empty terms after normalization
     }
 
+    // normalizeFavorites(favorites) {
+    //     return favorites.forEach(item => ({
+    //         title: item.title || '',
+    //         favicon: item.favicon || '',
+    //         url: item.url || '',
+    //         pinned: item.pinned || false,
+    //         lastModified: item.lastModified || Date.now(),
+    //         order: item.order || 0
+    //     }));
+    // }
+
     normalizeFavorites(favorites) {
-        return favorites.forEach(item => ({
-            title: item.title || '',
-            favicon: item.favicon || '',
-            url: item.url || '',
-            pinned: item.pinned || false,
-            lastModified: item.lastModified || Date.now(),
-            order: item.order || 0
-        }));
+        // Ensure input is an array
+        if (!Array.isArray(favorites)) {
+            console.warn('normalizeFavorites received non-array input:', favorites);
+            return [];
+        }
+        // Use map to return a new array
+        return favorites.map((item, index) => {
+            // Provide default values and ensure properties exist
+            const url = String(item?.url || '');
+            const title = String(item?.title || url || ''); // Use URL as fallback title
+            const favicon = String(item?.favicon || '');
+            const pinned = Boolean(item?.pinned || false);
+            const lastModified = Number(item?.lastModified || Date.now());
+            // Use the original index as a fallback for order if item.order isn't a valid number
+            const order = typeof item?.order === 'number' ? item.order : index;
+    
+            return {
+                title: title,
+                favicon: favicon,
+                url: url,
+                pinned: pinned,
+                lastModified: lastModified,
+                order: order
+            };
+        }).filter(item => item.url); // Filter out entries without a valid URL after normalization
     }
 
-    mergeSearchHistory(local, remote) {
+    // mergeSearchHistory(local, remote) {
+    //     const normalizedLocal = this.normalizeSearchHistory(local);
+    //     const normalizedRemote = this.normalizeSearchHistory(remote);
+
+    //     const merged = new Map();
+
+    //     // Process local entries
+    //     normalizedLocal.forEach(item => {
+    //         merged.set(item.term, item);
+    //     });
+
+    //     // Merge remote entries, overwriting if newer
+    //     normalizedRemote.forEach(item => {
+    //         const existingItem = merged.get(item.term);
+    //         // Ensure lastSearched is treated as a number for comparison
+    //         const itemLastSearched = Number(item.lastSearched || 0);
+    //         const existingLastSearched = Number(existingItem?.lastSearched || 0);
+
+    //         if (!existingItem || itemLastSearched > existingLastSearched) {
+    //             merged.set(item.term, item);
+    //         }
+    //     });
+
+    //     return Array.from(merged.values())
+    //         .sort((a, b) => Number(b.lastSearched || 0) - Number(a.lastSearched || 0));
+    // }
+
+    mergeSearchHistory(local, remote, remove = false) {
+        // Normalize both arrays first to ensure consistent object structure {term: string, lastSearched: number}
         const normalizedLocal = this.normalizeSearchHistory(local);
         const normalizedRemote = this.normalizeSearchHistory(remote);
-
-        const merged = new Map();
-
-        // Process local entries
-        normalizedLocal.forEach(item => {
-            merged.set(item.term, item);
-        });
-
-        // Merge remote entries, overwriting if newer
-        normalizedRemote.forEach(item => {
-            const existingItem = merged.get(item.term);
-            // Ensure lastSearched is treated as a number for comparison
-            const itemLastSearched = Number(item.lastSearched || 0);
-            const existingLastSearched = Number(existingItem?.lastSearched || 0);
-
-            if (!existingItem || itemLastSearched > existingLastSearched) {
+    
+        const merged = new Map(); // Use a Map to store the results based on unique terms
+    
+        if (remove) {
+            // --- Intersection Logic (Keep Local if in Both) ---
+            console.log('Merging history with remove=true (intersection, prefer local)');
+            // Create a Set of terms present in the remote data for efficient lookup
+            const remoteTerms = new Set(normalizedRemote.map(item => item.term));
+    
+            // Iterate through local items
+            normalizedLocal.forEach(localItem => {
+                // If the local item's term also exists remotely...
+                if (remoteTerms.has(localItem.term)) {
+                    // ...add the LOCAL item to the merged result. We prioritize the local item's data
+                    // when performing an intersection merge in the 'remove' scenario.
+                    merged.set(localItem.term, localItem);
+                }
+                // If a local item's term is NOT in remoteTerms, it's implicitly excluded.
+            });
+            // The 'merged' map now contains only local items that are also present remotely.
+    
+        } else {
+            // --- Standard Merge Logic (Keep Latest Timestamp) ---
+            console.log('Merging history with remove=false (standard merge, keep latest)');
+            // Process local entries first, adding them to the map
+            normalizedLocal.forEach(item => {
                 merged.set(item.term, item);
-            }
-        });
-
+            });
+    
+            // Merge remote entries, potentially overwriting based on timestamp
+            normalizedRemote.forEach(item => {
+                const existingItem = merged.get(item.term);
+                // Ensure lastSearched is treated as a number for comparison
+                const itemLastSearched = Number(item.lastSearched || 0);
+                const existingLastSearched = Number(existingItem?.lastSearched || 0);
+    
+                // Keep the item (either existing or new remote) with the later timestamp
+                if (!existingItem || itemLastSearched > existingLastSearched) {
+                    merged.set(item.term, item);
+                }
+                // If existingItem exists and has a later or equal timestamp, it remains unchanged.
+            });
+            // The 'merged' map now contains all unique terms, keeping the one with the latest timestamp.
+        }
+    
+        // Convert the final map values (the selected history items) to an array
+        // and sort by lastSearched date (most recent first)
         return Array.from(merged.values())
             .sort((a, b) => Number(b.lastSearched || 0) - Number(a.lastSearched || 0));
     }
 
-    mergeFavorites(local, remote) {
-        // const normalizedLocal = this.normalizeFavorites(local);
-        // const normalizedRemote = this.normalizeFavorites(remote);
+    // mergeFavorites(local, remote) {
+    //     // const normalizedLocal = this.normalizeFavorites(local);
+    //     // const normalizedRemote = this.normalizeFavorites(remote);
 
-        const merged = new Map();
+    //     const merged = new Map();
 
-        // Process local entries
-        local.forEach(item => {
-            merged.set(item.url, item);
-        });
+    //     // Process local entries
+    //     local.forEach(item => {
+    //         merged.set(item.url, item);
+    //     });
 
-        // Merge remote entries
-        remote.forEach(item => {
-            const existingItem = merged.get(item.url);
-            if (!existingItem || item.lastModified > existingItem.lastModified) {
+    //     // Merge remote entries
+    //     remote.forEach(item => {
+    //         const existingItem = merged.get(item.url);
+    //         if (!existingItem || item.lastModified > existingItem.lastModified) {
+    //             merged.set(item.url, item);
+    //         }
+    //     });
+
+    //     return Array.from(merged.values())
+    //         .sort((a, b) => {
+    //             // Sort by pinned status first
+    //             if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
+    //             // Then by order if available
+    //             if (a.order !== b.order) return (a.order || 0) - (b.order || 0);
+    //             // Finally by title
+    //             return (a.title || '').localeCompare(b.title || '');
+    //         });
+    // }
+
+    mergeFavorites(local, remote, remove = false) {
+        // Normalize both arrays first to ensure consistent object structure
+        const normalizedLocal = this.normalizeFavorites(local);
+        const normalizedRemote = this.normalizeFavorites(remote);
+    
+        const merged = new Map(); // Use a Map to store the results based on unique URLs
+    
+        if (remove) {
+            // --- Intersection Logic (Keep Local if in Both) ---
+            console.log('Merging favorites with remove=true (intersection, prefer local)');
+            // Create a Set of URLs present in the remote data for efficient lookup
+            const remoteUrls = new Set(normalizedRemote.map(item => item.url));
+    
+            // Iterate through local items
+            normalizedLocal.forEach(localItem => {
+                // If the local item's URL also exists remotely...
+                if (remoteUrls.has(localItem.url)) {
+                    // ...add the LOCAL item to the merged result.
+                    merged.set(localItem.url, localItem);
+                }
+                // If a local item's URL is NOT in remoteUrls, it's excluded.
+            });
+            // The 'merged' map now contains only local items whose URLs are also present remotely.
+    
+        } else {
+            // --- Standard Merge Logic (Keep Latest Timestamp) ---
+            console.log('Merging favorites with remove=false (standard merge, keep latest)');
+            // Process local entries first
+            normalizedLocal.forEach(item => {
                 merged.set(item.url, item);
-            }
-        });
-
+            });
+    
+            // Merge remote entries, overwriting if newer based on lastModified
+            normalizedRemote.forEach(item => {
+                const existingItem = merged.get(item.url);
+                // Ensure lastModified is treated as a number for comparison
+                const itemLastModified = Number(item.lastModified || 0);
+                const existingLastModified = Number(existingItem?.lastModified || 0);
+    
+                // Keep the item (either existing or new remote) with the later timestamp
+                if (!existingItem || itemLastModified > existingLastModified) {
+                    merged.set(item.url, item);
+                }
+                // If existingItem exists and has a later or equal timestamp, it remains unchanged.
+            });
+            // The 'merged' map now contains all unique URLs, keeping the one with the latest timestamp.
+        }
+    
+        // Convert the final map values to an array and sort according to the defined rules
         return Array.from(merged.values())
             .sort((a, b) => {
-                // Sort by pinned status first
-                if (a.pinned !== b.pinned) return b.pinned ? 1 : -1;
-                // Then by order if available
-                if (a.order !== b.order) return (a.order || 0) - (b.order || 0);
-                // Finally by title
+                // Sort by pinned status first (pinned items come first)
+                if (a.pinned !== b.pinned) return b.pinned ? -1 : 1; // true comes before false
+                // Then by order if available and different
+                if ((a.order ?? Infinity) !== (b.order ?? Infinity)) return (a.order ?? Infinity) - (b.order ?? Infinity);
+                // Finally by title (localeCompare is robust for string comparison)
                 return (a.title || '').localeCompare(b.title || '');
             });
     }
 
-    async syncSearchHistory() {
+    /**
+     * 
+     * @param {boolean} [remove=false] - If true, performs an intersection merge, keeping the local version.
+     *                                   If false, performs a standard merge, keeping the latest version.
+     * @returns {Array<object>} The merged and sorted favorites array.
+     */
+    async syncSearchHistory(remove = false) {
         try {
             const localData = JSON.parse(localStorage.getItem('searchHistory') || '[]')
             // .map(term => ({ term, lastSearched: Date.now() }));
@@ -801,7 +950,7 @@ class browserSyncManager {
             // Ensure remoteData is an array, default to empty if not (readFile should handle this)
             const remoteDataObjects = Array.isArray(remoteData) ? remoteData : [];
 
-            const mergedData = this.mergeSearchHistory(localData, remoteDataObjects);
+            const mergedData = this.mergeSearchHistory(localData, remoteDataObjects, remove);
             await this.writeFile(this.filePaths.history, mergedData);
 
             // Filter out any items where term might have become null or empty somehow during merging/normalization
@@ -820,12 +969,18 @@ class browserSyncManager {
         }
     }
 
-    async syncFavorites() {
+    /**
+     * 
+     * @param {boolean} [remove=false] - If true, performs an intersection merge, keeping the local version.
+     *                                   If false, performs a standard merge, keeping the latest version.
+     * @returns {Array<object>} The merged and sorted favorites array.
+     */
+    async syncFavorites(remove = false) {
         try {
             const localData = JSON.parse(localStorage.getItem('mostVisited') || '[]');
             const remoteData = await this.readFile(this.filePaths.favorites);
 
-            const mergedData = this.mergeFavorites(localData, remoteData);
+            const mergedData = this.mergeFavorites(localData, remoteData, remove = false);
             await this.writeFile(this.filePaths.favorites, mergedData);
 
             // Update local storage

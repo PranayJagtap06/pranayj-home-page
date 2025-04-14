@@ -278,7 +278,7 @@ class SearchSuggestionsManager {
             this.showSuggestions();
             // sync with dropbox
             if (this.syncManager && this.syncManager.isAuthenticated) {
-                this.syncManager.syncSearchHistory();
+                this.syncManager.syncSearchHistory(true);
             }
         }
     }
@@ -467,7 +467,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             console.log('Favorite sites removed successfully');
             // sync with dropbox
             if (syncInitialized) {
-                await browserSync.syncFavorites();
+                await browserSync.syncFavorites(true);
             }
         } catch (error) {
             console.error('Failed to remove site:', error);
@@ -715,11 +715,12 @@ document.addEventListener('DOMContentLoaded', async function () {
                 currentSites.push(newSite);
                 localStorage.setItem('mostVisited', JSON.stringify(currentSites));
 
+                updateMostVisited();
+
                 // sync with dropbox
                 if (syncInitialized) {
                     await browserSync.syncFavorites();
                 }
-                updateMostVisited();
             } catch (error) {
                 console.error('Failed to add new site:', error);
                 alert('Please enter a valid URL and title');
