@@ -826,9 +826,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // Set up periodic sync if needed
-    // if (syncInitialized) {
-    //     setInterval(() => browserSync.syncData(), 90000); // Sync every 30 minutes
-    // }
+    if (syncInitialized) {
+        setInterval(() => browserSync.syncData(), 300000); // Sync every 5 minutes
+    }
 
 });
 

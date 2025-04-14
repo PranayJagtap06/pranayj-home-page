@@ -52,7 +52,7 @@ class browserSyncManager {
                     this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status, {'status': false}) || {'status': false};
                     this.schhist_remove_status = await this.readFile(this.filePaths.schhist_remove_status, {'status': false}) || {'status': false};
 
-                    await this.syncData();
+                    // await this.syncData();
                     return true;
                 } catch (error) {
                     console.error('Failed to verify Dropbox connection:', error);
