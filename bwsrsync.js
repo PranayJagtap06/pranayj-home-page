@@ -980,7 +980,7 @@ class browserSyncManager {
             const localData = JSON.parse(localStorage.getItem('mostVisited') || '[]');
             const remoteData = await this.readFile(this.filePaths.favorites);
 
-            const mergedData = this.mergeFavorites(localData, remoteData, remove = false);
+            const mergedData = this.mergeFavorites(localData, remoteData, remove);
             await this.writeFile(this.filePaths.favorites, mergedData);
 
             // Update local storage
