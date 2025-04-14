@@ -810,7 +810,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 }
             } else {
                 console.log('Already authenticated, syncing...');
-                await browserSync.syncData();
+                // await browserSync.syncData();
                 // Update UI to show sync success
                 syncButton.innerHTML = '<i class="fas fa-check"></i> Synced';
                 setTimeout(() => {

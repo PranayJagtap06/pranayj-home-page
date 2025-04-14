@@ -1,5 +1,4 @@
 // browserSyncManager.js
-import { resolve } from 'url';
 import { initializeClient, authenticate, clearStoredAuth, refreshAccessToken, openAuthPopup } from './debug-env.js';
 
 class browserSyncManager {
@@ -11,11 +10,14 @@ class browserSyncManager {
         this.offlineQueue = [];
         this.lastSync = null;
         this.syncInProgress = false;
+        this.fav_remove_status = null;
+        this.schhist_remove_status = null;
 
         // File paths in Dropbox
         this.filePaths = {
             history: '/search_history.json',
-            favorites: '/favorites.json'
+            favorites: '/favorites.json',
+            remove_status: '/remove_status.json'
         };
 
         // Initialize offline handling
@@ -65,7 +67,7 @@ class browserSyncManager {
         const authSuccess = await openAuthPopup();
         if (authSuccess) {
             this.isAuthenticated = true;
-            // await this.syncData();
+            await this.syncData();
             return true;
         }
         return false;
@@ -453,7 +455,7 @@ class browserSyncManager {
         });
     }
 
-    async readFile(path) {
+    async readFile(path, data = null) {
         let parsedData = null;
         const cachedItem = this.localCache.get(path);
 
@@ -477,7 +479,7 @@ class browserSyncManager {
                     // Create empty file
                     await this.dbx.filesUpload({
                         path,
-                        contents: JSON.stringify([]),
+                        contents: JSON.stringify(data ? data : []),
                         mode: { '.tag': 'add' },
                         autorename: false,
                         mute: false
@@ -485,7 +487,7 @@ class browserSyncManager {
 
                     console.log(`Empty file ${path} uploaded successfully...`);
 
-                    parsedData = [];
+                    parsedData = data ? data : [];
 
                     // Update cache
                     this.localCache.set(path, {
@@ -576,7 +578,7 @@ class browserSyncManager {
 
             // Update cache
             this.localCache.set(path, {
-                data,
+                data: data,
                 timestamp: Date.now()
             });
         } catch (error) {
@@ -686,6 +688,9 @@ class browserSyncManager {
     }
 
     async syncData() {
+        this.schhist_remove_status = this.readFile(this.filePaths.schhist_remove_status, {'status': false});
+        this.fav_remove_status = this.readFile(this.filePaths.fav_remove_status, {'status': false});
+
         if (this.syncInProgress) return;
         this.syncInProgress = true;
 
@@ -796,7 +801,25 @@ class browserSyncManager {
     
         const merged = new Map(); // Use a Map to store the results based on unique terms
     
-        if (remove) {
+        if (this.schhist_remove_status.status) {
+            // --- Intersection Logic (Keep Remote if in Both) ---
+            console.log('Merging history with schhist_remove_status=true (intersection, prefer remote)');
+            // Create a Set of terms present in the local data for efficient lookup
+            const localTerms = new Set(normalizedLocal.map(item => item.term));
+    
+            // Iterate through remote items
+            normalizedRemote.forEach(remoteItem => {
+                // If the local item's term also exists remotely...
+                if (localTerms.has(remoteItem.term)) {
+                    // ...add the REMOTE item to the merged result. We prioritize the remote item's data
+                    // when performing an intersection merge in the 'remove' scenario.
+                    merged.set(remoteItem.term, remoteItem);
+                }
+                // If a remote item's term is NOT in localItems, it's implicitly excluded.
+            });
+            // The 'merged' map now contains only remote items that are also present locally.
+
+        } else if (remove) {
             // --- Intersection Logic (Keep Local if in Both) ---
             console.log('Merging history with remove=true (intersection, prefer local)');
             // Create a Set of terms present in the remote data for efficient lookup
@@ -813,6 +836,8 @@ class browserSyncManager {
                 // If a local item's term is NOT in remoteTerms, it's implicitly excluded.
             });
             // The 'merged' map now contains only local items that are also present remotely.
+
+            this.writeFile(this.filePaths.schhist_remove_status, {'status': true});
     
         } else {
             // --- Standard Merge Logic (Keep Latest Timestamp) ---
@@ -880,8 +905,24 @@ class browserSyncManager {
         const normalizedRemote = this.normalizeFavorites(remote);
     
         const merged = new Map(); // Use a Map to store the results based on unique URLs
-    
-        if (remove) {
+        if (this.fav_remove_status.status) {
+            // --- Intersection Logic (Keep Remote if in Both) ---
+            console.log('Merging favorites with remove_status=true (intersection, prefer remote)');
+            // Create a Set of URLs present in the local data for efficient lookup
+            const localUrls = new Set(normalizedLocal.map(item => item.url));
+
+            // Iterate through remote items
+            normalizedRemote.forEach(remoteItem => {
+                // If the remote item's URL also exists locally...
+                if (localUrls.has(remoteItem.url)) {
+                    // ...add the REMOTE item to the merged result.
+                    merged.set(remoteItem.url, remoteItem);
+                }
+                // If a remote item's URL is NOT in localUrls, it's excluded.
+            });
+            // The 'merged' map now contains only remote items whose URLs are also present locally.
+
+        } else if (remove) {
             // --- Intersection Logic (Keep Local if in Both) ---
             console.log('Merging favorites with remove=true (intersection, prefer local)');
             // Create a Set of URLs present in the remote data for efficient lookup
@@ -897,6 +938,8 @@ class browserSyncManager {
                 // If a local item's URL is NOT in remoteUrls, it's excluded.
             });
             // The 'merged' map now contains only local items whose URLs are also present remotely.
+
+            this.writeFile(this.filePaths.fav_remove_status, {'status': true});
     
         } else {
             // --- Standard Merge Logic (Keep Latest Timestamp) ---
