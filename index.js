@@ -79,7 +79,7 @@ class SearchSuggestionsManager {
         this.debounceTimeout = setTimeout(async () => {
             try {
                 const internetSuggestions = await this.fetchSuggestions(query);
-                const recentMatches = this.getRecentMatches(query);
+                const recentMatches = this.getLocalMatchesSuggestions(query);
 
                 // Combine suggestions, prioritizing recent matches
                 this.suggestions = [
@@ -100,7 +100,7 @@ class SearchSuggestionsManager {
                 console.error('Suggestions error:', error);
                 // Ensure we handle potential undefined values
                 try {
-                    this.suggestions = this.getFallbackSuggestions(query);
+                    this.suggestions = this.getLocalMatchesSuggestions(query);
                     if (this.suggestions && this.suggestions.length > 0) {
                         this.showSuggestions();
                     } else {
@@ -114,8 +114,8 @@ class SearchSuggestionsManager {
         }, 300);
     }
 
-    // Get matching recent searches
-    getRecentMatches(query) {
+    // Get matching recent searches and fallback suggestions
+    getLocalMatchesSuggestions(query) {
         return this.recentSearches
             .filter(search => search.toLowerCase().includes(query.toLowerCase()))
             .map(search => ({
@@ -152,7 +152,7 @@ class SearchSuggestionsManager {
 
             if (!suggestions || !Array.isArray(suggestions) || suggestions.length === 0) {
                 console.warn('No suggestions returned or invalid format');
-                return this.getFallbackSuggestions(query);
+                return this.getLocalMatchesSuggestions(query);
             }
 
             console.log('Internet Suggestions:', suggestions.map(s => s.text));
@@ -166,7 +166,7 @@ class SearchSuggestionsManager {
 
         } catch (error) {
             console.error('Failed to fetch suggestions:', error);
-            return this.getFallbackSuggestions(query);
+            return this.getLocalMatchesSuggestions(query);
         }
     }
 
@@ -266,17 +266,6 @@ class SearchSuggestionsManager {
                 console.error('Failed to save recent search:', error);
             }
         }
-    }
-
-    // Fallback method if internet suggestions fail
-    getFallbackSuggestions(query) {
-        return this.recentSearches
-            .filter(search => search.toLowerCase().includes(query.toLowerCase()))
-            .map(search => ({
-                text: search,
-                type: 'recent',
-                icon: '🕒'
-            }));
     }
 
     // Remove a recent search
