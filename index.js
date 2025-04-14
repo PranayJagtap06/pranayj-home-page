@@ -25,12 +25,12 @@ class SearchSuggestionsManager {
         try {
             // Load from local storage first
             this.recentSearches = this.loadRecentSearches();
-            // if (this.syncManager && this.syncManager.isAuthenticated) {
-            //     // Wait for initial sync from dropbox if auth successfull
-            //     await this.syncManager.syncData();
-            //     // Update from synced history
-            //     this.recentSearches = this.loadRecentSearches();
-            // }
+            if (this.syncManager && this.syncManager.isAuthenticated) {
+                // Wait for initial sync from dropbox if auth successfull
+                await this.syncManager.syncData();
+                // Update from synced history
+                this.recentSearches = this.loadRecentSearches();
+            }
         } catch (error) {
             console.warn('Failed to initialize synced data:', error);
         }
@@ -259,9 +259,9 @@ class SearchSuggestionsManager {
             try {
                 this.saveLocalSearch(query);
                 // sync with dropbox
-                // if (this.syncManager && this.syncManager.isAuthenticated) {
-                //     this.syncManager.syncSearchHistory();
-                // }
+                if (this.syncManager && this.syncManager.isAuthenticated) {
+                    this.syncManager.syncSearchHistory();
+                }
             } catch (error) {
                 console.error('Failed to save recent search:', error);
             }
@@ -288,9 +288,9 @@ class SearchSuggestionsManager {
             this.suggestions.splice(index, 1);
             this.showSuggestions();
             // sync with dropbox
-            // if (this.syncManager && this.syncManager.isAuthenticated) {
-            //     this.syncManager.syncSearchHistory();
-            // }
+            if (this.syncManager && this.syncManager.isAuthenticated) {
+                this.syncManager.syncSearchHistory();
+            }
         }
     }
 
@@ -477,9 +477,9 @@ document.addEventListener('DOMContentLoaded', async function () {
             localStorage.setItem('mostVisited', JSON.stringify(sitesLocal));
             console.log('Favorite sites removed successfully');
             // sync with dropbox
-            // if (syncInitialized) {
-            //     await browserSync.syncFavorites();
-            // }
+            if (syncInitialized) {
+                await browserSync.syncFavorites();
+            }
         } catch (error) {
             console.error('Failed to remove site:', error);
         }
@@ -727,9 +727,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                 localStorage.setItem('mostVisited', JSON.stringify(currentSites));
 
                 // sync with dropbox
-                // if (syncInitialized) {
-                //     await browserSync.syncFavorites();
-                // }
+                if (syncInitialized) {
+                    await browserSync.syncFavorites();
+                }
                 updateMostVisited();
             } catch (error) {
                 console.error('Failed to add new site:', error);
@@ -755,9 +755,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         ).filter(Boolean);
         localStorage.setItem('mostVisited', JSON.stringify(newOrder));
         // sync with dropbox
-        // if (syncInitialized) {
-        //     await browserSync.syncFavorites();
-        // }
+        if (syncInitialized) {
+            await browserSync.syncFavorites();
+        }
         updateMostVisited();
 
     }
@@ -832,9 +832,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // Set up periodic sync if needed
-    // if (syncInitialized) {
-    //     setInterval(() => browserSync.syncData(), 30000); // Sync every 5 minutes
-    // }
+    if (syncInitialized) {
+        setInterval(() => browserSync.syncData(), 90000); // Sync every 30 minutes
+    }
 
 });
 
