@@ -279,7 +279,7 @@ class SearchSuggestionsManager {
             // sync with dropbox
             if (this.syncManager && this.syncManager.isAuthenticated) {
                 // Set remove status first
-                await this.syncManager.writeFile(browserSync.filePaths.schhist_remove_status, {'status': true});
+                // await this.syncManager.writeFile(browserSync.filePaths.schhist_remove_status, {'status': true});
                 await this.syncManager.syncSearchHistory(true);
             }
         }
@@ -470,7 +470,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             // sync with dropbox
             if (syncInitialized) {
                 // Set remove status first
-                await browserSync.writeFile(browserSync.filePaths.fav_remove_status, {'status': true});
+                // await browserSync.writeFile(browserSync.filePaths.fav_remove_status, {'status': true});
                 await browserSync.syncFavorites(true);
             }
         } catch (error) {

@@ -49,8 +49,8 @@ class browserSyncManager {
                     // await this.ensureSyncDirectory();
 
                     // Initialize remove status flags
-                    this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status, {'status': false}) || {'status': false};
-                    this.schhist_remove_status = await this.readFile(this.filePaths.schhist_remove_status, {'status': false}) || {'status': false};
+                    this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status);;
+                    this.schhist_remove_status = await this.readFile(this.filePaths.schhist_remove_status);
 
                     // await this.syncData();
                     return true;
@@ -819,27 +819,28 @@ class browserSyncManager {
     
         const merged = new Map(); // Use a Map to store the results based on unique terms
     
-        if (this.schhist_remove_status.status) {
-            // --- Intersection Logic (Keep Remote if in Both) ---
-            console.log('Merging history with schhist_remove_status=true (intersection, prefer remote)');
-            // Create a Set of terms present in the local data for efficient lookup
-            const localTerms = new Set(normalizedLocal.map(item => item.term));
+        // if (this.schhist_remove_status.status) {
+        //     // --- Intersection Logic (Keep Remote if in Both) ---
+        //     console.log('Merging history with schhist_remove_status=true (intersection, prefer remote)');
+        //     // Create a Set of terms present in the local data for efficient lookup
+        //     const localTerms = new Set(normalizedLocal.map(item => item.term));
     
-            // Iterate through remote items
-            normalizedRemote.forEach(remoteItem => {
-                // If the local item's term also exists remotely...
-                if (localTerms.has(remoteItem.term)) {
-                    // ...add the REMOTE item to the merged result. We prioritize the remote item's data
-                    // when performing an intersection merge in the 'remove' scenario.
-                    merged.set(remoteItem.term, remoteItem);
-                }
-                // If a remote item's term is NOT in localItems, it's implicitly excluded.
-            });
-            // The 'merged' map now contains only remote items that are also present locally.
+        //     // Iterate through remote items
+        //     normalizedRemote.forEach(remoteItem => {
+        //         // If the local item's term also exists remotely...
+        //         if (localTerms.has(remoteItem.term)) {
+        //             // ...add the REMOTE item to the merged result. We prioritize the remote item's data
+        //             // when performing an intersection merge in the 'remove' scenario.
+        //             merged.set(remoteItem.term, remoteItem);
+        //         }
+        //         // If a remote item's term is NOT in localItems, it's implicitly excluded.
+        //     });
+        //     // The 'merged' map now contains only remote items that are also present locally.
 
-            this.writeFile(this.filePaths.schhist_remove_status, {'status': false});
+        //     this.writeFile(this.filePaths.schhist_remove_status, {'status': false});
 
-        } else if (remove) {
+        // } else 
+        if (remove) {
             // --- Intersection Logic (Keep Local if in Both) ---
             console.log('Merging history with remove=true (intersection, prefer local)');
             // Create a Set of terms present in the remote data for efficient lookup
@@ -925,26 +926,27 @@ class browserSyncManager {
         const normalizedRemote = this.normalizeFavorites(remote);
     
         const merged = new Map(); // Use a Map to store the results based on unique URLs
-        if (this.fav_remove_status.status) {
-            // --- Intersection Logic (Keep Remote if in Both) ---
-            console.log('Merging favorites with remove_status=true (intersection, prefer remote)');
-            // Create a Set of URLs present in the local data for efficient lookup
-            const localUrls = new Set(normalizedLocal.map(item => item.url));
+        // if (this.fav_remove_status.status) {
+        //     // --- Intersection Logic (Keep Remote if in Both) ---
+        //     console.log('Merging favorites with remove_status=true (intersection, prefer remote)');
+        //     // Create a Set of URLs present in the local data for efficient lookup
+        //     const localUrls = new Set(normalizedLocal.map(item => item.url));
 
-            // Iterate through remote items
-            normalizedRemote.forEach(remoteItem => {
-                // If the remote item's URL also exists locally...
-                if (localUrls.has(remoteItem.url)) {
-                    // ...add the REMOTE item to the merged result.
-                    merged.set(remoteItem.url, remoteItem);
-                }
-                // If a remote item's URL is NOT in localUrls, it's excluded.
-            });
-            // The 'merged' map now contains only remote items whose URLs are also present locally.
+        //     // Iterate through remote items
+        //     normalizedRemote.forEach(remoteItem => {
+        //         // If the remote item's URL also exists locally...
+        //         if (localUrls.has(remoteItem.url)) {
+        //             // ...add the REMOTE item to the merged result.
+        //             merged.set(remoteItem.url, remoteItem);
+        //         }
+        //         // If a remote item's URL is NOT in localUrls, it's excluded.
+        //     });
+        //     // The 'merged' map now contains only remote items whose URLs are also present locally.
 
-            this.writeFile(this.filePaths.fav_remove_status, {'status': false});
+        //     this.writeFile(this.filePaths.fav_remove_status, {'status': false});
 
-        } else if (remove) {
+        // } else 
+        if (remove) {
             // --- Intersection Logic (Keep Local if in Both) ---
             console.log('Merging favorites with remove=true (intersection, prefer local)');
             // Create a Set of URLs present in the remote data for efficient lookup
