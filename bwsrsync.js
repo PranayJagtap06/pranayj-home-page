@@ -995,10 +995,15 @@ class browserSyncManager {
             const localData = JSON.parse(localStorage.getItem('searchHistory') || '[]')
             // .map(term => ({ term, lastSearched: Date.now() }));
 
-            const remoteData = await this.readFile(this.filePaths.history);
+            const remoteData = await this.readFile(this.filePaths.history, []);
 
             // Ensure remoteData is an array, default to empty if not (readFile should handle this)
             const remoteDataObjects = Array.isArray(remoteData) ? remoteData : [];
+
+            if (localData.length === remoteDataObjects.length === 0) {
+                console.log('No local search history found on local or remote data. Nothing to sync.');
+                return [];
+            }
 
             const mergedData = this.mergeSearchHistory(localData, remoteDataObjects, remove);
             await this.writeFile(this.filePaths.history, mergedData);
@@ -1030,7 +1035,12 @@ class browserSyncManager {
 
         try {
             const localData = JSON.parse(localStorage.getItem('mostVisited') || '[]');
-            const remoteData = await this.readFile(this.filePaths.favorites);
+            const remoteData = await this.readFile(this.filePaths.favorites, []);
+
+            if (localData.length === remoteData.length === 0) {
+                console.log('No local favorites found on local or remote data. Nothing to sync.');
+                return [];
+            }
 
             const mergedData = this.mergeFavorites(localData, remoteData, remove);
             await this.writeFile(this.filePaths.favorites, mergedData);
