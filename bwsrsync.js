@@ -17,7 +17,8 @@ class browserSyncManager {
         this.filePaths = {
             history: '/search_history.json',
             favorites: '/favorites.json',
-            remove_status: '/remove_status.json'
+            fav_remove_status: '/fav_remove_status.json',
+            schhist_remove_status: '/schhist_remove_status.json'
         };
 
         // Initialize offline handling
