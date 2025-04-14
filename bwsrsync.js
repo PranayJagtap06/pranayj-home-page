@@ -45,8 +45,8 @@ class browserSyncManager {
                     await this.testConnection(this.dbx);
                     console.log('Dropbox connection verified');
                     // Initialize remove status flags
-                    this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status, {'status': false});
-                    this.schhist_remove_status = await this.readFile(this.filePaths.schhist_remove_status, {'status': false});
+                    this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status, {'status': false}) || {'status': false};
+                    this.schhist_remove_status = await this.readFile(this.filePaths.schhist_remove_status, {'status': false}) || {'status': false};
                     await this.syncData();
                     return true;
                 } catch (error) {
@@ -480,18 +480,19 @@ class browserSyncManager {
             } catch (downloadError) {
                 if (downloadError.status === 409) {
                     console.log(`File ${path} does not exist, creating empty file...`);
+                    
+                    parsedData = data ? data : [];
+                    
                     // Create empty file
                     await this.dbx.filesUpload({
                         path,
-                        contents: JSON.stringify(data ? data : []),
+                        contents: JSON.stringify(parsedData),
                         mode: { '.tag': 'add' },
                         autorename: false,
                         mute: false
                     });
 
                     console.log(`Empty file ${path} uploaded successfully...`);
-
-                    parsedData = data ? data : [];
 
                     // Update cache
                     this.localCache.set(path, {
@@ -578,7 +579,7 @@ class browserSyncManager {
                 autorename: false,
                 mute: false
             });
-            console.log('File uploaded successfully.');
+            console.log(`${ path } file uploaded successfully.`);
 
             // Update cache
             this.localCache.set(path, {
@@ -989,7 +990,7 @@ class browserSyncManager {
      * @returns {Array<object>} The merged and sorted favorites array.
      */
     async syncSearchHistory(remove = false) {
-        this.schhist_remove_status = await this.readFile(this.filePaths.schhist_remove_status, {'status': false});
+        this.schhist_remove_status = this.readFile(this.filePaths.schhist_remove_status, {'status': false});
 
         try {
             const localData = JSON.parse(localStorage.getItem('searchHistory') || '[]')
@@ -1000,8 +1001,9 @@ class browserSyncManager {
             // Ensure remoteData is an array, default to empty if not (readFile should handle this)
             const remoteDataObjects = Array.isArray(remoteData) ? remoteData : [];
 
-            if (localData.length === remoteDataObjects.length === 0) {
+            if (localData.length == remoteDataObjects.length === 0) {
                 console.log('No local search history found on local or remote data. Nothing to sync.');
+                await this.writeFile(this.filePaths.history, []);
                 return [];
             }
 
@@ -1017,7 +1019,7 @@ class browserSyncManager {
             localStorage.setItem('searchHistory',
                 JSON.stringify(termsToSave));
 
-            return mergedData;
+            // return mergedData;
         } catch (error) {
             console.error('Failed to sync search history:', error);
             throw error;
@@ -1031,14 +1033,15 @@ class browserSyncManager {
      * @returns {Array<object>} The merged and sorted favorites array.
      */
     async syncFavorites(remove = false) {
-        this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status, {'status': false});
+        this.fav_remove_status = this.readFile(this.filePaths.fav_remove_status, {'status': false});
 
         try {
             const localData = JSON.parse(localStorage.getItem('mostVisited') || '[]');
             const remoteData = await this.readFile(this.filePaths.favorites, []);
 
-            if (localData.length === remoteData.length === 0) {
+            if (localData.length == remoteData.length === 0) {
                 console.log('No local favorites found on local or remote data. Nothing to sync.');
+                await this.writeFile(this.filePaths.favorites, []);
                 return [];
             }
 
@@ -1048,7 +1051,7 @@ class browserSyncManager {
             // Update local storage
             localStorage.setItem('mostVisited', JSON.stringify(mergedData));
 
-            return mergedData;
+            // return mergedData;
         } catch (error) {
             console.error('Failed to sync favorites:', error);
             throw error;

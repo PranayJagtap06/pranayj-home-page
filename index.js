@@ -25,12 +25,12 @@ class SearchSuggestionsManager {
         try {
             // Load from local storage first
             this.recentSearches = this.loadRecentSearches();
-            if (this.syncManager && this.syncManager.isAuthenticated) {
-                // Wait for initial sync from dropbox if auth successfull
-                await this.syncManager.syncData();
-                // Update from synced history
-                this.recentSearches = this.loadRecentSearches();
-            }
+            // if (this.syncManager && this.syncManager.isAuthenticated) {
+            //     // Wait for initial sync from dropbox if auth successfull
+            //     await this.syncManager.syncData();
+            //     // Update from synced history
+            //     this.recentSearches = this.loadRecentSearches();
+            // }
         } catch (error) {
             console.warn('Failed to initialize synced data:', error);
         }
