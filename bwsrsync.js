@@ -44,7 +44,10 @@ class browserSyncManager {
                 try {
                     await this.testConnection(this.dbx);
                     console.log('Dropbox connection verified');
-                    // await this.syncData();
+                    // Initialize remove status flags
+                    this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status, {'status': false});
+                    this.schhist_remove_status = await this.readFile(this.filePaths.schhist_remove_status, {'status': false});
+                    await this.syncData();
                     return true;
                 } catch (error) {
                     console.error('Failed to verify Dropbox connection:', error);
@@ -792,7 +795,7 @@ class browserSyncManager {
     //         .sort((a, b) => Number(b.lastSearched || 0) - Number(a.lastSearched || 0));
     // }
 
-    mergeSearchHistory(local, remote, remove = false) {
+    async mergeSearchHistory(local, remote, remove = false) {
         // Normalize both arrays first to ensure consistent object structure {term: string, lastSearched: number}
         const normalizedLocal = this.normalizeSearchHistory(local);
         const normalizedRemote = this.normalizeSearchHistory(remote);
@@ -817,6 +820,8 @@ class browserSyncManager {
             });
             // The 'merged' map now contains only remote items that are also present locally.
 
+            await this.writeFile(this.filePaths.schhist_remove_status, {'status': false});
+
         } else if (remove) {
             // --- Intersection Logic (Keep Local if in Both) ---
             console.log('Merging history with remove=true (intersection, prefer local)');
@@ -835,7 +840,7 @@ class browserSyncManager {
             });
             // The 'merged' map now contains only local items that are also present remotely.
 
-            this.writeFile(this.filePaths.schhist_remove_status, {'status': true});
+            // this.writeFile(this.filePaths.schhist_remove_status, {'status': true});
     
         } else {
             // --- Standard Merge Logic (Keep Latest Timestamp) ---
@@ -897,7 +902,7 @@ class browserSyncManager {
     //         });
     // }
 
-    mergeFavorites(local, remote, remove = false) {
+    async mergeFavorites(local, remote, remove = false) {
         // Normalize both arrays first to ensure consistent object structure
         const normalizedLocal = this.normalizeFavorites(local);
         const normalizedRemote = this.normalizeFavorites(remote);
@@ -920,6 +925,8 @@ class browserSyncManager {
             });
             // The 'merged' map now contains only remote items whose URLs are also present locally.
 
+            await this.writeFile(this.filePaths.fav_remove_status, {'status': true});
+
         } else if (remove) {
             // --- Intersection Logic (Keep Local if in Both) ---
             console.log('Merging favorites with remove=true (intersection, prefer local)');
@@ -937,7 +944,7 @@ class browserSyncManager {
             });
             // The 'merged' map now contains only local items whose URLs are also present remotely.
 
-            this.writeFile(this.filePaths.fav_remove_status, {'status': true});
+            // this.writeFile(this.filePaths.fav_remove_status, {'status': true});
     
         } else {
             // --- Standard Merge Logic (Keep Latest Timestamp) ---
@@ -982,8 +989,8 @@ class browserSyncManager {
      * @returns {Array<object>} The merged and sorted favorites array.
      */
     async syncSearchHistory(remove = false) {
-        this.schhist_remove_status = this.readFile(this.filePaths.schhist_remove_status, {'status': false});
-        
+        this.schhist_remove_status = await this.readFile(this.filePaths.schhist_remove_status, {'status': false});
+
         try {
             const localData = JSON.parse(localStorage.getItem('searchHistory') || '[]')
             // .map(term => ({ term, lastSearched: Date.now() }));
@@ -1019,7 +1026,7 @@ class browserSyncManager {
      * @returns {Array<object>} The merged and sorted favorites array.
      */
     async syncFavorites(remove = false) {
-        this.fav_remove_status = this.readFile(this.filePaths.fav_remove_status, {'status': false});
+        this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status, {'status': false});
 
         try {
             const localData = JSON.parse(localStorage.getItem('mostVisited') || '[]');

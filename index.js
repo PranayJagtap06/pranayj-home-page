@@ -269,7 +269,7 @@ class SearchSuggestionsManager {
     }
 
     // Remove a recent search
-    removeRecentSearch(index) {
+    async removeRecentSearch(index) {
         const suggestion = this.suggestions[index];
         if (suggestion && suggestion.type === 'recent') {
             this.recentSearches = this.recentSearches.filter(s => s !== suggestion.text);
@@ -278,7 +278,9 @@ class SearchSuggestionsManager {
             this.showSuggestions();
             // sync with dropbox
             if (this.syncManager && this.syncManager.isAuthenticated) {
-                this.syncManager.syncSearchHistory(true);
+                // Set remove status first
+                await this.syncManager.writeFile(browserSync.filePaths.schhist_remove_status, {'status': true});
+                await this.syncManager.syncSearchHistory(true);
             }
         }
     }
@@ -467,6 +469,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             console.log('Favorite sites removed successfully');
             // sync with dropbox
             if (syncInitialized) {
+                // Set remove status first
+                await browserSync.writeFile(browserSync.filePaths.fav_remove_status, {'status': true});
                 await browserSync.syncFavorites(true);
             }
         } catch (error) {
@@ -822,9 +826,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // Set up periodic sync if needed
-    if (syncInitialized) {
-        setInterval(() => browserSync.syncData(), 90000); // Sync every 30 minutes
-    }
+    // if (syncInitialized) {
+    //     setInterval(() => browserSync.syncData(), 90000); // Sync every 30 minutes
+    // }
 
 });
 
