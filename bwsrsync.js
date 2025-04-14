@@ -13,12 +13,12 @@ class browserSyncManager {
         this.fav_remove_status = null;
         this.schhist_remove_status = null;
 
-        // File paths in Dropbox
+        // File paths in Dropbox - update with app folder path
         this.filePaths = {
-            history: '/search_history.json',
-            favorites: '/favorites.json',
-            fav_remove_status: '/fav_remove_status.json',
-            schhist_remove_status: '/schhist_remove_status.json'
+            history: '/sync_data/search_history.json',
+            favorites: '/sync_data/favorites.json',
+            fav_remove_status: '/sync_data/fav_remove_status.json',
+            schhist_remove_status: '/sync_data/schhist_remove_status.json'
         };
 
         // Initialize offline handling
@@ -44,9 +44,14 @@ class browserSyncManager {
                 try {
                     await this.testConnection(this.dbx);
                     console.log('Dropbox connection verified');
+
+                    // Ensure sync directory exists
+                    await this.ensureSyncDirectory();
+
                     // Initialize remove status flags
                     this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status, {'status': false}) || {'status': false};
                     this.schhist_remove_status = await this.readFile(this.filePaths.schhist_remove_status, {'status': false}) || {'status': false};
+
                     await this.syncData();
                     return true;
                 } catch (error) {
@@ -542,6 +547,14 @@ class browserSyncManager {
             return parsedData;
         } catch (error) {
             console.error(`Failed to read file ${path}:`, error);
+
+            // Handle specific error codes
+            if (error.status === 400) {
+                console.warn(`Invalid path format for ${path}, checking path...`);
+                // You might want to attempt path correction here
+                return data || [];
+            }
+
             // Check if it's an authentication error
             if (error.status === 401) {
                 console.log('Authentication error, attempting to refresh token...');
@@ -1055,6 +1068,21 @@ class browserSyncManager {
         } catch (error) {
             console.error('Failed to sync favorites:', error);
             throw error;
+        }
+    }
+
+    async ensureSyncDirectory() {
+        try {
+            await this.dbx.filesCreateFolderV2({
+                path: '/sync_data',
+                autorename: false
+            });
+            console.log('Sync directory created');
+        } catch (error) {
+            // Ignore error if folder already exists (409 conflict)
+            if (error.status !== 409) {
+                console.error('Error creating sync directory:', error);
+            }
         }
     }
 }
