@@ -38,9 +38,6 @@ importers:
       netlify-cli:
         specifier: ^18.0.0
         version: 18.0.0(@types/node@22.10.5)(picomatch@4.0.2)
-      node-fetch:
-        specifier: ^3.3.2
-        version: 3.3.2
       os-browserify:
         specifier: ^0.3.0
         version: 0.3.0
