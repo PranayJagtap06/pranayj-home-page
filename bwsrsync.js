@@ -772,6 +772,15 @@ class browserSyncManager {
         this.syncInProgress = true;
 
         try {
+            // Load latest status flags first
+            this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status, { status: false });
+            this.schhist_remove_status = await this.readFile(this.filePaths.schhist_remove_status, { status: false });
+    
+            console.log('Current status flags:', {
+                fav_remove_status: this.fav_remove_status,
+                schhist_remove_status: this.schhist_remove_status
+            });
+            
             await Promise.all([
                 this.syncSearchHistory(),
                 this.syncFavorites()
