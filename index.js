@@ -717,6 +717,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                 const currentSites = JSON.parse(localStorage.getItem('mostVisited') || '[]');
                 currentSites.push(newSite);
+                console.log('New site added:', newSite);
                 localStorage.setItem('mostVisited', JSON.stringify(currentSites));
 
                 updateMostVisited();
@@ -728,6 +729,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             } catch (error) {
                 console.error('Failed to add new site:', error);
                 alert('Please enter a valid URL and title');
+                sleep(5000);
+                this.addNewSite();
             }
         }
     }

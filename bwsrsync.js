@@ -96,24 +96,20 @@ class browserSyncManager {
                 console.log('browserSyncManager.initialize: authenticate() returned false. Authentication needed.');
                 this.isAuthenticated = false;
 
-                let buttonSync = document.getElementById('sync-button');
-                console.log('Clicking sync button...');
-                buttonSync.click();
-                return false; // Initialization failed
-                // const authSuccess = await this.authenticateWithPopup();
-                // if (authSuccess) {
-                //     console.log('browserSyncManager.initialize: Authentication successful via popup.');
-                //     this.isAuthenticated = true;
-                //     location.reload(); // Reload to apply new auth state
-                //     // await this.syncData();
-                //     return true;
-                // } else {
-                //     console.log('browserSyncManager.initialize: Authentication failed via popup.');
-                //     this.isAuthenticated = false;
-                //     // Optionally clear auth if popup fails
-                //     // clearStoredAuth();
-                //     return false; // Initialization failed
-                // }
+                const authSuccess = await this.authenticateWithPopup();
+                if (authSuccess) {
+                    console.log('browserSyncManager.initialize: Authentication successful via popup.');
+                    this.isAuthenticated = true;
+                    location.reload(); // Reload to apply new auth state
+                    // await this.syncData();
+                    return true;
+                } else {
+                    console.log('browserSyncManager.initialize: Authentication failed via popup.');
+                    this.isAuthenticated = false;
+                    // Optionally clear auth if popup fails
+                    // clearStoredAuth();
+                    return false; // Initialization failed
+                }
             }
         } catch (error) {
             console.error('Failed to initialize sync manager:', error);
@@ -878,8 +874,8 @@ class browserSyncManager {
 
     async mergeSearchHistory(local, remote, remove = false) {
         // Normalize both arrays first to ensure consistent object structure {term: string, lastSearched: number}
-        const normalizedLocal = this.normalizeSearchHistory(local);
-        const normalizedRemote = this.normalizeSearchHistory(remote);
+        const normalizedLocal = this.normalizeSearchHistory(Array.isArray(local) ? local : []);
+        const normalizedRemote = this.normalizeSearchHistory(Array.isArray(remote) ? remote : []);
 
         const merged = new Map(); // Use a Map to store the results based on unique terms
 
@@ -986,8 +982,8 @@ class browserSyncManager {
 
     async mergeFavorites(local, remote, remove = false) {
         // Normalize both arrays first to ensure consistent object structure
-        const normalizedLocal = this.normalizeFavorites(local);
-        const normalizedRemote = this.normalizeFavorites(remote);
+        const normalizedLocal = this.normalizeFavorites(Array.isArray(local) ? local : []);
+        const normalizedRemote = this.normalizeFavorites(Array.isArray(remote) ? remote : []);
 
         const merged = new Map(); // Use a Map to store the results based on unique URLs
         // if (this.fav_remove_status.status) {
@@ -1088,12 +1084,18 @@ class browserSyncManager {
             }
 
             const mergedData = this.mergeSearchHistory(localData, remoteDataObjects, remove);
+
+            // Ensure mergedData is an array
+            if (!Array.isArray(mergedData)) {
+                console.error('mergeSearchHistory returned non-array:', mergedData);
+                return [];
+            }
             await this.writeFile(this.filePaths.history, mergedData);
 
             // Filter out any items where term might have become null or empty somehow during merging/normalization
             const termsToSave = mergedData
-                .map(item => item?.term) // Get the term
-                .filter(term => term);   // Keep only non-empty, non-null terms
+            .filter(item => item && typeof item === 'object' && item.term)
+            .map(item => item.term);  // Keep only non-empty, non-null terms
 
             // Update local storage
             localStorage.setItem('searchHistory',
