@@ -82,7 +82,8 @@ class browserSyncManager {
                         this.schhist_remove_status = { 'status': false };
                     }
 
-                    // await this.syncData();
+                    await this.syncData();
+                    console.log('Sync data completed successfully.');
                     return true;
                 } catch (error) {
                     console.error('Failed to verify Dropbox connection or read status files AFTER successful authenticate:', error);
@@ -767,6 +768,7 @@ class browserSyncManager {
         } catch (error) {
             console.error('Sync failed:', error);
         } finally {
+            console.log('Sync completed successfully.');
             this.syncInProgress = false;
         }
     }

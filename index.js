@@ -797,6 +797,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 console.log('Initiating authentication via user action...');
                 const success = await browserSync.authenticateWithPopup();
                 if (success) {
+                    await browserSync.syncData();
                     console.log('Authentication and sync successful!');
                     // Optionally update UI to show sync success
                     syncButton.innerHTML = '<i class="fas fa-check"></i> Synced';
