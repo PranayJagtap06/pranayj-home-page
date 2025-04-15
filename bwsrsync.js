@@ -95,8 +95,19 @@ class browserSyncManager {
             } else {
                 console.log('browserSyncManager.initialize: authenticate() returned false. Authentication needed.');
                 this.isAuthenticated = false;
-                // No sync functionality possible without authentication
-                return false;
+                const authSuccess = await this.authenticateWithPopup();
+                if (authSuccess) {
+                    console.log('browserSyncManager.initialize: Authentication successful via popup.');
+                    this.isAuthenticated = true;
+                    // await this.syncData();
+                    return true;
+                } else {
+                    console.log('browserSyncManager.initialize: Authentication failed via popup.');
+                    this.isAuthenticated = false;
+                    // Optionally clear auth if popup fails
+                    // clearStoredAuth();
+                    return false; // Initialization failed
+                }
             }
         } catch (error) {
             console.error('Failed to initialize sync manager:', error);

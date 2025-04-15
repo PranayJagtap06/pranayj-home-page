@@ -25,12 +25,12 @@ class SearchSuggestionsManager {
         try {
             // Load from local storage first
             this.recentSearches = this.loadRecentSearches();
-            // if (this.syncManager && this.syncManager.isAuthenticated) {
-            //     // Wait for initial sync from dropbox if auth successfull
-            //     await this.syncManager.syncData();
-            //     // Update from synced history
-            //     this.recentSearches = this.loadRecentSearches();
-            // }
+            if (this.syncManager && this.syncManager.isAuthenticated) {
+                // Wait for initial sync from dropbox if auth successfull
+                await this.syncManager.syncSearchHistory();
+                // Update from synced history
+                this.recentSearches = this.loadRecentSearches();
+            }
         } catch (error) {
             console.warn('Failed to initialize synced data:', error);
         }
@@ -330,7 +330,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (await browserSync.initialize()) {
             syncInitialized = true;
         } else {
-            syncInitialized = true;
+            syncInitialized = false;
             console.log("Failed to initialize sync")
         }
     } catch (error) {
@@ -797,7 +797,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 console.log('Initiating authentication via user action...');
                 const success = await browserSync.authenticateWithPopup();
                 if (success) {
-                    await browserSync.syncData();
+                    // await browserSync.syncData();
                     console.log('Authentication and sync successful!');
                     // Optionally update UI to show sync success
                     syncButton.innerHTML = '<i class="fas fa-check"></i> Synced';
