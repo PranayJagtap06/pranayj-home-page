@@ -16,10 +16,10 @@ class browserSyncManager {
 
         // File paths in Dropbox - update with app folder path
         this.filePaths = {
-            history: '/search_history.json',
-            favorites: '/favorites.json',
-            fav_remove_status: '/fav_remove_status.json',
-            schhist_remove_status: '/schhist_remove_status.json'
+            history: '/sync_data/search_history.json',
+            favorites: '/sync_data/favorites.json',
+            fav_remove_status: '/sync_data/fav_remove_status.json',
+            schhist_remove_status: '/sync_data/schhist_remove_status.json'
         };
 
         // Initialize offline handling
@@ -47,7 +47,7 @@ class browserSyncManager {
                     console.log('Dropbox connection verified');
 
                     // Ensure sync directory exists
-                    // await this.ensureSyncDirectory();
+                    await this.ensureSyncDirectory();
 
                     // Initialize remove status flags
                     this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status);;
