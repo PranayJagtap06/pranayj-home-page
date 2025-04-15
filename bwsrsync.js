@@ -508,7 +508,7 @@ class browserSyncManager {
     }
 
     async readFile(path, data = null) {
-        const parsedData = null;
+        let parsedData = null;
         const cachedItem = this.localCache.get(path);
 
         if (!this.isAuthenticated) {
