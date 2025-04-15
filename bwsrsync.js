@@ -1083,7 +1083,7 @@ class browserSyncManager {
                 return [];
             }
 
-            const mergedData = this.mergeSearchHistory(localData, remoteDataObjects, remove);
+            const mergedData = await this.mergeSearchHistory(localData, remoteDataObjects, remove);
 
             // Ensure mergedData is an array
             if (!Array.isArray(mergedData)) {
@@ -1125,7 +1125,7 @@ class browserSyncManager {
                 return [];
             }
 
-            const mergedData = this.mergeFavorites(localData, remoteData, remove);
+            const mergedData = await this.mergeFavorites(localData, remoteData, remove);
             await this.writeFile(this.filePaths.favorites, mergedData);
 
             // Update local storage
