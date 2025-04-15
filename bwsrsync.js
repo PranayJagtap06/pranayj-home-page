@@ -33,41 +33,74 @@ class browserSyncManager {
 
     async initialize() {
         try {
-            if (!this.dbx) {
-                this.dbx = await initializeClient();
-            }
+            console.log('browserSyncManager.initialize: Initializing...');
 
+            // 1. Get an initial client instance (might be unauthenticated or based on storage)
+            // We need a client instance to potentially use for refresh inside authenticate()
+            this.dbx = await initializeClient();
+            console.log('browserSyncManager.initialize: Got initial dbx instance:', this.dbx ? 'OK' : 'NULL');
+
+            // 2. Attempt authentication (checks storage, may refresh token using the client instance)
             const isAuthValid = await authenticate()
             if (isAuthValid) {
+                console.log('browserSyncManager.initialize: authenticate() returned true.');
+
+                // 3. ***CRITICAL FIX***: Re-initialize/get the client instance AGAIN.
+                // This ensures 'this.dbx' uses the potentially refreshed tokens
+                // that authenticate() might have stored.
+                this.dbx = await initializeClient();
+                console.log('browserSyncManager.initialize: Refetched dbx instance after successful authenticate:', this.dbx ? 'OK' : 'NULL');
+
+                // Check if the refetched client is valid
+                if (!this.dbx) {
+                    console.error("browserSyncManager.initialize: Failed to get authenticated dbx client even after successful authenticate().");
+                    this.isAuthenticated = false;
+                    return false;
+                }
+
                 this.isAuthenticated = true;
-                console.log('Authentication successful');
+                console.log('Authentication successful, dbx instance hopefully updated.');
 
                 try {
+                    // 4. Test connection with the *final* this.dbx instance
                     await this.testConnection(this.dbx);
-                    console.log('Dropbox connection verified');
+                    console.log('Dropbox connection verified with current dbx instance.');
 
                     // Ensure sync directory exists
                     await this.ensureSyncDirectory();
 
-                    // Initialize remove status flags
-                    this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status);;
-                    this.schhist_remove_status = await this.readFile(this.filePaths.schhist_remove_status);
+                    // Initialize remove status flags (reading them requires an authenticated client)
+                    // Consider making these optional or handling errors gracefully if they fail
+                    try {
+                        this.fav_remove_status = await this.readFile(this.filePaths.fav_remove_status, { 'status': false });
+                        this.schhist_remove_status = await this.readFile(this.filePaths.schhist_remove_status, { 'status': false });
+                        console.log('Initialized remove status flags.');
+                    } catch (readStatusError) {
+                        console.warn('Could not initialize remove status flags:', readStatusError);
+                        // Set defaults manually if reading fails
+                        this.fav_remove_status = { 'status': false };
+                        this.schhist_remove_status = { 'status': false };
+                    }
 
                     // await this.syncData();
                     return true;
                 } catch (error) {
-                    console.error('Failed to verify Dropbox connection:', error);
-                    this.isAuthenticated = false;
-                    return false;
+                    console.error('Failed to verify Dropbox connection or read status files AFTER successful authenticate:', error);
+                    this.isAuthenticated = false; // Mark as not truly usable
+                    // Optionally clear auth if connection consistently fails?
+                    // clearStoredAuth();
+                    return false; // Initialization failed
                 }
             } else {
-                console.log('Authentication needed');
+                console.log('browserSyncManager.initialize: authenticate() returned false. Authentication needed.');
                 this.isAuthenticated = false;
+                // No sync functionality possible without authentication
                 return false;
             }
         } catch (error) {
             console.error('Failed to initialize sync manager:', error);
-            this.isAuthenticated = false;
+            this.isAuthenticated = false; // Ensure flag is false on error
+            this.dbx = null; // Clear client on major init error
             return false;
         }
     }
@@ -84,17 +117,26 @@ class browserSyncManager {
     }
 
     async testConnection(client) {
+        // Add check if client is valid before using it
+        if (!client) {
+            throw new Error('testConnection called with null client');
+        }
+        console.log('testConnection: Attempting usersGetCurrentAccount...');
         // const client = this.authManager.getClient();
         try {
             // Try to get account information as a connection test
             const user = await client.usersGetCurrentAccount();
-            console.log(user)
+            console.log('testConnection: Success! User:', user?.result?.email);
         } catch (error) {
+            console.error('testConnection: usersGetCurrentAccount failed:', error);
             if (error.status === 401) {
+                console.log('testConnection: Received 401, attempting refresh...');
                 // Token might be expired, try to refresh
                 const refreshed = await refreshAccessToken();
                 if (!refreshed) {
-                    throw new Error('Failed to refresh authentication token');
+                    console.error('testConnection: Token refresh failed.');
+                    this.isAuthenticated = false; // Update state
+                    throw new Error('Failed to refresh authentication token during testConnection');
                 }
             } else {
                 throw error;
@@ -493,9 +535,9 @@ class browserSyncManager {
             } catch (metadataError) {
                 if (metadataError.status === 409) {
                     console.log(`File ${path} does not exist, creating empty file...`);
-                    
+
                     parsedData = data ? data : [];
-                    
+
                     // Create empty file
                     await this.writeFile(path, parsedData);
 
@@ -595,7 +637,7 @@ class browserSyncManager {
                 autorename: false,
                 mute: false
             });
-            console.log(`${ path } file uploaded successfully.`);
+            console.log(`${path} file uploaded successfully.`);
 
             // Update cache
             this.localCache.set(path, {
@@ -776,7 +818,7 @@ class browserSyncManager {
             const lastModified = Number(item?.lastModified || Date.now());
             // Use the original index as a fallback for order if item.order isn't a valid number
             const order = typeof item?.order === 'number' ? item.order : index;
-    
+
             return {
                 title: title,
                 favicon: favicon,
@@ -819,15 +861,15 @@ class browserSyncManager {
         // Normalize both arrays first to ensure consistent object structure {term: string, lastSearched: number}
         const normalizedLocal = this.normalizeSearchHistory(local);
         const normalizedRemote = this.normalizeSearchHistory(remote);
-    
+
         const merged = new Map(); // Use a Map to store the results based on unique terms
-    
+
         // if (this.schhist_remove_status.status) {
         //     // --- Intersection Logic (Keep Remote if in Both) ---
         //     console.log('Merging history with schhist_remove_status=true (intersection, prefer remote)');
         //     // Create a Set of terms present in the local data for efficient lookup
         //     const localTerms = new Set(normalizedLocal.map(item => item.term));
-    
+
         //     // Iterate through remote items
         //     normalizedRemote.forEach(remoteItem => {
         //         // If the local item's term also exists remotely...
@@ -848,7 +890,7 @@ class browserSyncManager {
             console.log('Merging history with remove=true (intersection, prefer local)');
             // Create a Set of terms present in the remote data for efficient lookup
             const remoteTerms = new Set(normalizedRemote.map(item => item.term));
-    
+
             // Iterate through local items
             normalizedLocal.forEach(localItem => {
                 // If the local item's term also exists remotely...
@@ -862,7 +904,7 @@ class browserSyncManager {
             // The 'merged' map now contains only local items that are also present remotely.
 
             // this.writeFile(this.filePaths.schhist_remove_status, {'status': true});
-    
+
         } else {
             // --- Standard Merge Logic (Keep Latest Timestamp) ---
             console.log('Merging history with remove=false (standard merge, keep latest)');
@@ -870,14 +912,14 @@ class browserSyncManager {
             normalizedLocal.forEach(item => {
                 merged.set(item.term, item);
             });
-    
+
             // Merge remote entries, potentially overwriting based on timestamp
             normalizedRemote.forEach(item => {
                 const existingItem = merged.get(item.term);
                 // Ensure lastSearched is treated as a number for comparison
                 const itemLastSearched = Number(item.lastSearched || 0);
                 const existingLastSearched = Number(existingItem?.lastSearched || 0);
-    
+
                 // Keep the item (either existing or new remote) with the later timestamp
                 if (!existingItem || itemLastSearched > existingLastSearched) {
                     merged.set(item.term, item);
@@ -886,7 +928,7 @@ class browserSyncManager {
             });
             // The 'merged' map now contains all unique terms, keeping the one with the latest timestamp.
         }
-    
+
         // Convert the final map values (the selected history items) to an array
         // and sort by lastSearched date (most recent first)
         return Array.from(merged.values())
@@ -927,7 +969,7 @@ class browserSyncManager {
         // Normalize both arrays first to ensure consistent object structure
         const normalizedLocal = this.normalizeFavorites(local);
         const normalizedRemote = this.normalizeFavorites(remote);
-    
+
         const merged = new Map(); // Use a Map to store the results based on unique URLs
         // if (this.fav_remove_status.status) {
         //     // --- Intersection Logic (Keep Remote if in Both) ---
@@ -954,7 +996,7 @@ class browserSyncManager {
             console.log('Merging favorites with remove=true (intersection, prefer local)');
             // Create a Set of URLs present in the remote data for efficient lookup
             const remoteUrls = new Set(normalizedRemote.map(item => item.url));
-    
+
             // Iterate through local items
             normalizedLocal.forEach(localItem => {
                 // If the local item's URL also exists remotely...
@@ -967,7 +1009,7 @@ class browserSyncManager {
             // The 'merged' map now contains only local items whose URLs are also present remotely.
 
             // this.writeFile(this.filePaths.fav_remove_status, {'status': true});
-    
+
         } else {
             // --- Standard Merge Logic (Keep Latest Timestamp) ---
             console.log('Merging favorites with remove=false (standard merge, keep latest)');
@@ -975,14 +1017,14 @@ class browserSyncManager {
             normalizedLocal.forEach(item => {
                 merged.set(item.url, item);
             });
-    
+
             // Merge remote entries, overwriting if newer based on lastModified
             normalizedRemote.forEach(item => {
                 const existingItem = merged.get(item.url);
                 // Ensure lastModified is treated as a number for comparison
                 const itemLastModified = Number(item.lastModified || 0);
                 const existingLastModified = Number(existingItem?.lastModified || 0);
-    
+
                 // Keep the item (either existing or new remote) with the later timestamp
                 if (!existingItem || itemLastModified > existingLastModified) {
                     merged.set(item.url, item);
@@ -991,7 +1033,7 @@ class browserSyncManager {
             });
             // The 'merged' map now contains all unique URLs, keeping the one with the latest timestamp.
         }
-    
+
         // Convert the final map values to an array and sort according to the defined rules
         return Array.from(merged.values())
             .sort((a, b) => {
@@ -1031,8 +1073,8 @@ class browserSyncManager {
 
             // Filter out any items where term might have become null or empty somehow during merging/normalization
             const termsToSave = mergedData
-            .map(item => item?.term) // Get the term
-            .filter(term => term);   // Keep only non-empty, non-null terms
+                .map(item => item?.term) // Get the term
+                .filter(term => term);   // Keep only non-empty, non-null terms
 
             // Update local storage
             localStorage.setItem('searchHistory',

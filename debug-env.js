@@ -126,6 +126,11 @@ export const authenticate = async () => {
         return false;
     } catch (error) {
         console.error('Failed to initialize authentication:', error);
+        // If initialization fails, clear stored auth
+        clearStoredAuth();
+        let buttonSync = document.getElementById('sync-button');
+        buttonSync.click();
+        console.log('Clicking sync button...');
         return false;
     }
 };
