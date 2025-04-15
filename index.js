@@ -805,6 +805,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         syncButton.innerHTML = '<i class="fas fa-sync"></i> Sync';
                     }, 2000);
                     updateMostVisited(); // Refresh the UI
+                    this.location.reload();
                 } else {
                     console.log('Authentication failed');
                     // Optionally update UI to show sync failure
