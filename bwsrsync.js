@@ -466,39 +466,40 @@ class browserSyncManager {
     }
 
     async readFile(path, data = null) {
-        let parsedData = null;
+        const parsedData = null;
         const cachedItem = this.localCache.get(path);
 
         if (!this.isAuthenticated) {
             console.log('Not authenticated, returning null for path:', path);
             // return null;
-            return cachedItem?.data || [];
+            return cachedItem?.data || data || [];
         }
 
         try {
             // const client = this.dbx;
             console.log('Attempting to read file:', path);
-            let response;
+
+            // Validate path starts with /sync_data/
+            if (!path.startsWith('/sync_data/')) {
+                console.error('Invalid path format - must start with /sync_data/:', path);
+                return data || [];
+            }
 
             try {
-                response = await this.dbx.filesDownload({ path });
-                console.log(`File ${path} exists and download initiated.`);
-            } catch (downloadError) {
-                if (downloadError.status === 409) {
+                await this.dbx.filesGetMetadata({
+                    path: path,
+                    include_deleted: false
+                });
+            } catch (metadataError) {
+                if (metadataError.status === 409) {
                     console.log(`File ${path} does not exist, creating empty file...`);
                     
                     parsedData = data ? data : [];
                     
                     // Create empty file
-                    await this.dbx.filesUpload({
-                        path,
-                        contents: JSON.stringify(parsedData),
-                        mode: { '.tag': 'add' },
-                        autorename: false,
-                        mute: false
-                    });
+                    await this.writeFile(path, parsedData);
 
-                    console.log(`Empty file ${path} uploaded successfully...`);
+                    // console.log(`Empty file ${path} uploaded successfully...`);
 
                     // Update cache
                     this.localCache.set(path, {
@@ -507,11 +508,12 @@ class browserSyncManager {
                     });
                     return parsedData;
                 } else {
-                    throw downloadError;
+                    throw metadataError;
                 }
             }
 
-            // const response = await this.dbx.filesDownload({ path });
+            const response = await this.dbx.filesDownload({ path });
+            console.log(`File ${path} exists and download initiated.`);
             const blob = await response.result?.fileBlob;
 
             if (!blob) {
@@ -1018,7 +1020,7 @@ class browserSyncManager {
             // Ensure remoteData is an array, default to empty if not (readFile should handle this)
             const remoteDataObjects = Array.isArray(remoteData) ? remoteData : [];
 
-            if (localData.length == remoteDataObjects.length === 0) {
+            if (!localData.length && !remoteDataObjects.length) {
                 console.log('No local search history found on local or remote data. Nothing to sync.');
                 await this.writeFile(this.filePaths.history, []);
                 return [];
@@ -1054,7 +1056,7 @@ class browserSyncManager {
             const localData = JSON.parse(localStorage.getItem('mostVisited') || '[]');
             const remoteData = await this.readFile(this.filePaths.favorites, []);
 
-            if (localData.length == remoteData.length === 0) {
+            if (!localData.length && !remoteData.length) {
                 console.log('No local favorites found on local or remote data. Nothing to sync.');
                 await this.writeFile(this.filePaths.favorites, []);
                 return [];
