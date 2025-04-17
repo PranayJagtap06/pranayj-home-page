@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Quote Generator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f7f9fc;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .container:hover {
+            transform: translateY(-5px);
+        }
+        
+        .quote-container {
+            margin-bottom: 30px;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .quote-text {
+            font-size: 24px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            font-style: italic;
+            position: relative;
+        }
+        
+        .quote-text::before {
+            content: '"';
+            font-size: 60px;
+            position: absolute;
+            left: -20px;
+            top: -20px;
+            color: #e6e6e6;
+            font-family: Georgia, serif;
+        }
+        
+        .quote-text::after {
+            content: '"';
+            font-size: 60px;
+            position: absolute;
+            right: -20px;
+            bottom: -40px;
+            color: #e6e6e6;
+            font-family: Georgia, serif;
+        }
+        
+        .quote-author {
+            font-size: 18px;
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .quote-tags {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .tag {
+            background-color: #f0f7ff;
+            color: #3498db;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            font-weight: 600;
+            outline: none;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
+        }
+        
+        button:active {
+            transform: scale(0.95);
+        }
+        
+        .buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .category-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        
+        .category-btn {
+            background-color: #f0f0f0;
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .category-btn.active {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .loading {
+            height: 20px;
+            margin: 15px 0;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .social-share {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .social-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            font-size: 18px;
+            text-decoration: none;
+        }
+        
+        .twitter {
+            background-color: #1DA1F2;
+        }
+        
+        .facebook {
+            background-color: #4267B2;
+        }
+        
+        @media (max-width: 768px) {
+            .quote-text {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Quote of the Moment</h1>
+        
+        <div class="category-buttons">
+            <div class="category-btn active" data-tag="all">All</div>
+            <div class="category-btn" data-tag="wisdom">Wisdom</div>
+            <div class="category-btn" data-tag="inspirational">Inspirational</div>
+            <div class="category-btn" data-tag="motivational">Motivational</div>
+            <div class="category-btn" data-tag="philosophy">Philosophy</div>
+            <div class="category-btn" data-tag="life">Life</div>
+        </div>
+        
+        <div class="quote-container">
+            <div class="quote-text" id="quote-text">Click the button below to get inspired!</div>
+            <div class="quote-author" id="quote-author"></div>
+            <div class="quote-tags" id="quote-tags"></div>
+        </div>
+        
+        <div class="loading" id="loading"></div>
+        
+        <div class="buttons">
+            <button id="new-quote">New Quote</button>
+            <button id="copy-quote">Copy Quote</button>
+        </div>
+        
+        <div class="social-share">
+            <a href="#" class="social-btn twitter" id="twitter-share" title="Share on Twitter">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
+                </svg>
+            </a>
+            <a href="#" class="social-btn facebook" id="facebook-share" title="Share on Facebook">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+                </svg>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const quoteText = document.getElementById('quote-text');
+            const quoteAuthor = document.getElementById('quote-author');
+            const quoteTags = document.getElementById('quote-tags');
+            const newQuoteBtn = document.getElementById('new-quote');
+            const copyQuoteBtn = document.getElementById('copy-quote');
+            const twitterShareBtn = document.getElementById('twitter-share');
+            const facebookShareBtn = document.getElementById('facebook-share');
+            const loadingElement = document.getElementById('loading');
+            const categoryButtons = document.querySelectorAll('.category-btn');
+            
+            let currentCategory = 'all';
+            let currentQuote = {};
+
+            // Use a CORS proxy
+            const proxyUrl = 'https://api.allorigins.win/raw?url=';
+            
+            // API URL
+            const API_BASE_URL = 'https://api.quotable.io';
+            
+            // Functions
+            async function fetchQuote(category = 'all') {
+                setLoading(true);
+                
+                try {
+                    let url = `${proxyUrl+API_BASE_URL}/random`;
+                    
+                    // Add tag filter if not "all"
+                    if (category !== 'all') {
+                        url += `?tags=${category}`;
+                    }
+                    
+                    const response = await fetch(url);
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch quote');
+                    }
+                    
+                    const data = await response.json();
+                    currentQuote = data;
+                    
+                    displayQuote(data);
+                } catch (error) {
+                    console.error('Error fetching quote:', error);
+                    quoteText.textContent = 'Failed to fetch a quote. Please try again.';
+                    quoteAuthor.textContent = '';
+                    quoteTags.innerHTML = '';
+                } finally {
+                    setLoading(false);
+                }
+            }
+            
+            function displayQuote(quoteData) {
+                quoteText.textContent = quoteData.content;
+                quoteAuthor.textContent = `— ${quoteData.author}`;
+                
+                // Display tags
+                quoteTags.innerHTML = '';
+                if (quoteData.tags && quoteData.tags.length > 0) {
+                    quoteData.tags.forEach(tag => {
+                        const tagElement = document.createElement('span');
+                        tagElement.classList.add('tag');
+                        tagElement.textContent = tag;
+                        quoteTags.appendChild(tagElement);
+                    });
+                }
+                
+                // Update social share links
+                updateShareLinks(quoteData);
+            }
+            
+            function updateShareLinks(quoteData) {
+                const text = `"${quoteData.content}" — ${quoteData.author}`;
+                const encodedText = encodeURIComponent(text);
+                
+                twitterShareBtn.href = `https://twitter.com/intent/tweet?text=${encodedText}`;
+                facebookShareBtn.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodedText}`;
+            }
+            
+            function copyToClipboard() {
+                const text = `"${currentQuote.content}" — ${currentQuote.author}`;
+                
+                navigator.clipboard.writeText(text).then(() => {
+                    const originalText = copyQuoteBtn.textContent;
+                    copyQuoteBtn.textContent = 'Copied!';
+                    
+                    setTimeout(() => {
+                        copyQuoteBtn.textContent = originalText;
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                });
+            }
+            
+            function setLoading(isLoading) {
+                if (isLoading) {
+                    loadingElement.textContent = 'Loading...';
+                } else {
+                    loadingElement.textContent = '';
+                }
+            }
+            
+            // Event Listeners
+            newQuoteBtn.addEventListener('click', () => fetchQuote(currentCategory));
+            
+            copyQuoteBtn.addEventListener('click', copyToClipboard);
+            
+            // Social media links should open in new tab
+            twitterShareBtn.setAttribute('target', '_blank');
+            facebookShareBtn.setAttribute('target', '_blank');
+            
+            // Category button handling
+            categoryButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Remove active class from all buttons
+                    categoryButtons.forEach(b => b.classList.remove('active'));
+                    
+                    // Add active class to clicked button
+                    btn.classList.add('active');
+                    
+                    // Get category and fetch new quote
+                    currentCategory = btn.dataset.tag;
+                    fetchQuote(currentCategory);
+                });
+            });
+            
+            // Initial quote fetch
+            fetchQuote();
+        });
+    </script>
+</body>
+</html>
