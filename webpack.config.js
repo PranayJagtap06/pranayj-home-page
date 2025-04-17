@@ -51,6 +51,7 @@ module.exports = {
       patterns: [
         // { from: 'public', to: '' },
         { from: 'index.html', to: '' },
+        {from: 'quotes.html', to: ''},
         {from: 'styles.css', to: ''},
         {from: 'pranay_sq.jpg', to: ''},
         {from: 'favicon.ico', to: ''},
